@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import  { useState } from 'react';
 import { useClientes } from './hooks/useClientes';
 import { ClientesFilter } from './components/ClientesFilter';
 import { ClientesTable } from './components/ClientesTable';

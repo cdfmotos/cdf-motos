@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useControlDiario } from './hooks/useControlDiario';
 import { ControlDiarioTable } from './components/ControlDiarioTable';
 import { RefreshCcw, DollarSign, FileText } from 'lucide-react';

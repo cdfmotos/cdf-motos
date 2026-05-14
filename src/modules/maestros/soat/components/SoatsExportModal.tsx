@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { X, Download, FileSpreadsheet } from 'lucide-react';
 import { exportarSoatsExcel } from '../utils/exportExcel';
 import type { ExportOptionType} from '../utils/exportExcel';

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useGastos } from './hooks/useGastos';
 import { GastosFilter } from './components/GastosFilter';
 import { GastosTable } from './components/GastosTable';

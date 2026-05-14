@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useSoats } from './hooks/useSoats';
 import { SoatsFilter } from './components/SoatsFilter';
 import { SoatsTable } from './components/SoatsTable';

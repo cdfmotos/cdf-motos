@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { X, Download, FileText } from 'lucide-react';
 import { getExtractoMoto } from '../services/extractoMoto';
 import { descargarPDFExtractoMoto } from '../utils/exportExtractoMoto';

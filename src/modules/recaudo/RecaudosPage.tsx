@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Plus, DollarSign } from 'lucide-react';
 import { useRecaudos } from './hooks/useRecaudos';
 import { RecaudosTable } from './components/RecaudosTable';

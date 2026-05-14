@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useGps } from './hooks/useGps';
 import { GpsFilter } from './components/GpsFilter';
 import { GpsTable } from './components/GpsTable';

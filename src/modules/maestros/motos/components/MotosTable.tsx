@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { DataTable } from '../../../../components/ui/DataTable';
 import type { Column } from '../../../../components/ui/DataTable/types/types';
 import type { Moto } from '../../../../db/schema';

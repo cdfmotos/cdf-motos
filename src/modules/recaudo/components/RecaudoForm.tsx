@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { X, Search, Wifi, WifiOff, AlertCircle } from 'lucide-react';
 import type { ContratoWithCliente } from '../services/recaudoService';
 import { useOnlineStatus } from '../../../hooks/useOnlineStatus';

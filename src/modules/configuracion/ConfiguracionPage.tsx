@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import  { useState } from 'react';
 import { useConfiguracion } from './hooks/useConfiguracion';
 import { HistorialEstadosTable } from './components/HistorialEstadosTable';
 import { EditEstadoModal } from './components/EditEstadoModal';

@@ -66,7 +66,7 @@ export function CambioEstadoContratoModal({ open, onClose }: CambioEstadoContrat
   };
 
   const handleGuardar = async () => {
-    if (!contrato || !nuevoEstado) return;
+    if (!contrato || !nuevoEstado || contrato.id === null) return;
 
     setLoading(true);
     setError(null);

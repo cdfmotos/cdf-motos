@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useMotos } from './hooks/useMotos';
 import { MotosFilter } from './components/MotosFilter';
 import { MotosTable } from './components/MotosTable';
