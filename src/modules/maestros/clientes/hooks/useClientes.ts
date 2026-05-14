@@ -63,23 +63,27 @@ export function useClientes() {
 
   const addCliente = async (cliente: Omit<Cliente, 'id' | '_sync_status' | 'created_at'>) => {
     try {
-      const newCliente = await createCliente(cliente);
-      setClientes(prev => [newCliente, ...prev]);
-      return true;
+      const result = await createCliente(cliente);
+      if (result.success) {
+        await loadClientes();
+      }
+      return result;
     } catch (err) {
       console.error('Error adding cliente:', err);
-      return false;
+      return { success: false, error: err instanceof Error ? err.message : 'Error desconocido' };
     }
   };
 
   const editCliente = async (id: string, updates: Partial<Omit<Cliente, 'id' | '_sync_status' | 'created_at'>>) => {
     try {
-      const updated = await updateCliente(id, updates);
-      setClientes(prev => prev.map(c => c.id === id ? updated : c));
-      return true;
+      const result = await updateCliente(id, updates);
+      if (result.success) {
+        await loadClientes();
+      }
+      return result;
     } catch (err) {
       console.error('Error updating cliente:', err);
-      return false;
+      return { success: false, error: err instanceof Error ? err.message : 'Error desconocido' };
     }
   };
 

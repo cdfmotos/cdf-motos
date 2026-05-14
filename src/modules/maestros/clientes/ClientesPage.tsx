@@ -1,21 +1,43 @@
-import  { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useClientes } from './hooks/useClientes';
 import { ClientesFilter } from './components/ClientesFilter';
 import { ClientesTable } from './components/ClientesTable';
 import { ClienteForm } from './components/ClienteForm';
 import { ClientesExportModal } from './components/ClientesExportModal';
 import { Plus, RefreshCcw, FileSpreadsheet } from 'lucide-react';
+import { useToast } from '../../../components/ui/Toast';
+import { syncEngine } from '../../../db/sync/syncEngine';
+import { useBlockedDay } from '../../../hooks/useBlockedDay';
+import { useAuthContext } from '../../../contexts/AuthContext';
 import type { Cliente } from '../../../db/schema';
 
 export function ClientesPage() {
   const { clientes, loading, error, filters, setFilters, addCliente, editCliente, reload } = useClientes();
-  
+  const { addToast } = useToast();
+  const { isAdmin } = useAuthContext();
+  const { canWrite } = useBlockedDay();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const handleSync = useCallback(async (cliente: Cliente) => {
+    const pk = cliente._local_id ?? String(cliente.id);
+    const ok = await syncEngine.sincronizarItem('clientes', pk);
+    if (ok) {
+      addToast('Cliente sincronizado correctamente', 'success');
+    } else {
+      addToast('Error al sincronizar. Se intentará automáticamente al reconectar.', 'error');
+    }
+    await reload();
+    return ok;
+  }, [addToast, reload]);
+
   const handleOpenNew = () => {
+    if (!canWrite()) {
+      addToast('El día está cerrado. No se permiten nuevos registros.', 'warning');
+      return;
+    }
     setEditingCliente(null);
     setIsFormOpen(true);
   };
@@ -34,14 +56,12 @@ export function ClientesPage() {
     setSaving(true);
     try {
       if (editingCliente) {
-        await editCliente(editingCliente.id, data);
+        const result = await editCliente(editingCliente.id, data);
+        return result;
       } else {
-        await addCliente(data as Omit<Cliente, 'id' | '_sync_status' | 'created_at'>);
+        const result = await addCliente(data as Omit<Cliente, 'id' | '_sync_status' | 'created_at'>);
+        return result;
       }
-      handleCloseForm();
-    } catch (e) {
-      console.error('Error al guardar cliente:', e);
-      alert('Error al guardar el cliente. Verifique los datos.');
     } finally {
       setSaving(false);
     }
@@ -88,10 +108,12 @@ export function ClientesPage() {
 
       <ClientesFilter filters={filters} onChange={setFilters} />
       
-      <ClientesTable 
-        data={clientes} 
-        loading={loading} 
-        onEdit={handleEdit} 
+      <ClientesTable
+        data={clientes}
+        loading={loading}
+        onEdit={handleEdit}
+        onSync={handleSync}
+        canEdit={isAdmin && canWrite()}
       />
 
       {isFormOpen && (

@@ -4,21 +4,33 @@ import { GastosFilter } from './components/GastosFilter';
 import { GastosTable } from './components/GastosTable';
 import { GastoForm } from './components/GastoForm';
 import { Plus, RefreshCcw } from 'lucide-react';
+import { useToast } from '../../components/ui/Toast';
+import { useBlockedDay } from '../../hooks/useBlockedDay';
 import type { Gasto } from '../../db/schema';
 
 export function GastosPage() {
   const { gastos, loading, error, filters, setFilters, addGasto, editGasto, removeGasto, syncGasto, reload } = useGastos();
-  
+  const { addToast } = useToast();
+  const { canWrite } = useBlockedDay();
+
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingGasto, setEditingGasto] = useState<Gasto | null>(null);
   const [saving, setSaving] = useState(false);
 
   const handleOpenNew = () => {
+    if (!canWrite()) {
+      addToast('El día está cerrado. No se permiten nuevos registros.', 'warning');
+      return;
+    }
     setEditingGasto(null);
     setIsFormOpen(true);
   };
 
   const handleEdit = (gasto: Gasto) => {
+    if (!canWrite()) {
+      addToast('El día está cerrado. No se permiten ediciones.', 'warning');
+      return;
+    }
     setEditingGasto(gasto);
     setIsFormOpen(true);
   };
@@ -29,6 +41,10 @@ export function GastosPage() {
   };
 
   const handleDelete = async (gasto: Gasto) => {
+    if (!canWrite()) {
+      addToast('El día está cerrado. No se permiten eliminaciones.', 'warning');
+      return;
+    }
     if (window.confirm(`¿Estás seguro de eliminar el gasto por ${gasto.concepto}?`)) {
       await removeGasto(gasto.id);
     }

@@ -1,6 +1,7 @@
 // src/db/sync/syncQueue.ts
 import { db } from '../db';
 import type { SyncQueueItem } from '../schema';
+import type { RecaudoInsert } from '../schema';
 
 // Agrega una operación a la cola
 export async function encolar(item: Omit<SyncQueueItem, 'id' | 'intentos' | 'estado' | 'timestamp'>) {
@@ -10,6 +11,24 @@ export async function encolar(item: Omit<SyncQueueItem, 'id' | 'intentos' | 'est
     intentos: 0,
     estado: 'pending',
   });
+}
+
+// Guarda un recaudo en Dexie y lo encola para sincronización
+export async function guardarEnDexieConCola(data: RecaudoInsert): Promise<string> {
+  const localId = `local-${Date.now()}`;
+  const withSync: RecaudoInsert & { _sync_status: 'pending'; _local_id: string } = {
+    ...data,
+    _sync_status: 'pending',
+    _local_id: localId,
+  };
+  await db.recaudo.add(withSync as any);
+  await encolar({
+    tabla: 'recaudo',
+    operacion: 'INSERT',
+    payload: data,
+    pk_value: localId,
+  });
+  return localId;
 }
 
 // Cuántos registros están esperando sincronización

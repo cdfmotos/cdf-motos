@@ -1,26 +1,52 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useGps } from './hooks/useGps';
 import { GpsFilter } from './components/GpsFilter';
 import { GpsTable } from './components/GpsTable';
 import { GpsForm } from './components/GpsForm';
 import { GpsExportModal } from './components/GpsExportModal';
 import { Plus, RefreshCcw, FileSpreadsheet } from 'lucide-react';
+import { useToast } from '../../../components/ui/Toast';
+import { syncEngine } from '../../../db/sync/syncEngine';
+import { useBlockedDay } from '../../../hooks/useBlockedDay';
+import { useAuthContext } from '../../../contexts/AuthContext';
 import type { GPS } from '../../../db/schema';
 
 export function GpsPage() {
   const { gpsList, loading, error, filters, setFilters, addGps, editGps, reload } = useGps();
-  
+  const { addToast } = useToast();
+  const { isAdmin } = useAuthContext();
+  const { canWrite } = useBlockedDay();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [editingGps, setEditingGps] = useState<GPS | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const handleSync = useCallback(async (gps: GPS) => {
+    const pk = gps._local_id ?? String(gps.id);
+    const ok = await syncEngine.sincronizarItem('gps', pk);
+    if (ok) {
+      addToast('GPS sincronizado correctamente', 'success');
+    } else {
+      addToast('Error al sincronizar. Se intentará automáticamente al reconectar.', 'error');
+    }
+    await reload();
+    return ok;
+  }, [addToast, reload]);
+
   const handleOpenNew = () => {
+    if (!canWrite()) {
+      addToast('El día está cerrado. No se permiten nuevos registros.', 'warning');
+      return;
+    }
     setEditingGps(null);
     setIsFormOpen(true);
   };
 
   const handleEdit = (gps: GPS) => {
+    if (!isAdmin || !canWrite()) {
+      addToast('No tienes permisos para editar.', 'warning');
+      return;
+    }
     setEditingGps(gps);
     setIsFormOpen(true);
   };
@@ -34,14 +60,12 @@ export function GpsPage() {
     setSaving(true);
     try {
       if (editingGps) {
-        await editGps(editingGps.id, data);
+        const result = await editGps(editingGps.id, data);
+        return result;
       } else {
-        await addGps(data as Omit<GPS, 'id' | '_sync_status' | 'created_at'>);
+        const result = await addGps(data as Omit<GPS, 'id' | '_sync_status' | 'created_at'>);
+        return result;
       }
-      handleCloseForm();
-    } catch (e) {
-      console.error('Error al guardar GPS:', e);
-      alert('Error al guardar el GPS. Verifique los datos.');
     } finally {
       setSaving(false);
     }
@@ -88,10 +112,12 @@ export function GpsPage() {
 
       <GpsFilter filters={filters} onChange={setFilters} />
       
-      <GpsTable 
-        data={gpsList} 
-        loading={loading} 
-        onEdit={handleEdit} 
+      <GpsTable
+        data={gpsList}
+        loading={loading}
+        onEdit={handleEdit}
+        onSync={handleSync}
+        canEdit={isAdmin && canWrite()}
       />
 
       {isFormOpen && (

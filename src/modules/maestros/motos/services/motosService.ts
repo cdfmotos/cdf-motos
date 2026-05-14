@@ -1,5 +1,7 @@
 import { db } from '../../../../db/db';
 import { encolar } from '../../../../db/sync/syncQueue';
+import { supabase } from '../../../../lib/supabase';
+import { limpiarPayload } from '../../../../utils/sync';
 import type { Moto } from '../../../../db/schema';
 
 export async function getMotos(): Promise<Moto[]> {
@@ -10,50 +12,88 @@ export async function getMotoByPlaca(placa: string): Promise<Moto | undefined> {
   return await db.motos.where('placa').equalsIgnoreCase(placa).first();
 }
 
-export async function createMoto(moto: Omit<Moto, 'id' | '_sync_status' | 'created_at'>): Promise<Moto> {
+export async function createMoto(
+  moto: Omit<Moto, 'id' | '_sync_status' | 'created_at'>
+): Promise<{ success: boolean; saved?: Moto; error?: string; localSaved?: boolean }> {
+  const existingPlaca = await db.motos.where('placa').equalsIgnoreCase(moto.placa).first();
+  if (existingPlaca) {
+    return { success: false, error: 'Ya existe una moto con esta placa' };
+  }
+
   const newMoto: Moto = {
     ...moto,
-    id: Date.now(), // ID temporal para Dexie
+    id: Date.now(),
     _sync_status: 'pending',
     created_at: new Date().toISOString(),
   };
 
-  // 1. Guardar localmente
-  await db.motos.add(newMoto);
+  if (navigator.onLine) {
+    try {
+      const { data, error } = await supabase
+        .from('motos')
+        .insert(limpiarPayload(newMoto as unknown as Record<string, unknown>) as any)
+        .select()
+        .single();
 
-  // 2. Encolar para sincronización
-  await encolar({
-    tabla: 'motos',
-    operacion: 'INSERT',
-    payload: newMoto,
-    pk_value: newMoto.id,
-  });
+      if (error) {
+        const localId = await guardarLocal(newMoto);
+        const saved = await db.motos.where('_local_id').equals(localId).first();
+        return { success: true, saved, localSaved: true };
+      }
 
-  return newMoto;
+      await db.motos.add({ ...data, _sync_status: 'synced' } as any);
+      const saved = await db.motos.where('id').equals(data.id as number).first();
+      return { success: true, saved };
+    } catch {
+      const localId = await guardarLocal(newMoto);
+      const saved = await db.motos.where('_local_id').equals(localId).first();
+      return { success: true, saved, localSaved: true };
+    }
+  }
+
+  const localId = await guardarLocal(newMoto);
+  const saved = await db.motos.where('_local_id').equals(localId).first();
+  return { success: true, saved, localSaved: true };
 }
 
-export async function updateMoto(id: number, updates: Partial<Omit<Moto, 'id' | '_sync_status' | 'created_at'>>): Promise<Moto> {
-  const motoExistente = await db.motos.get(id);
-  if (!motoExistente) throw new Error('Moto no encontrada');
+export async function updateMoto(
+  id: number,
+  updates: Partial<Omit<Moto, 'id' | '_sync_status' | 'created_at'>>
+): Promise<{ success: boolean; saved?: Moto; error?: string; localSaved?: boolean }> {
+  const existente = await db.motos.get(id);
+  if (!existente) return { success: false, error: 'Moto no encontrada' };
 
-  const motoActualizada: Moto = {
-    ...motoExistente,
+  const actualizado: Moto = {
+    ...existente,
     ...updates,
     _sync_status: 'pending',
   };
 
-  // 1. Actualizar localmente
-  await db.motos.put(motoActualizada);
+  if (navigator.onLine) {
+    try {
+      const { error } = await supabase
+        .from('motos')
+        .update(limpiarPayload(actualizado as unknown as Record<string, unknown>) as any)
+        .eq('id', existente.id);
 
-  // 2. Encolar
-  await encolar({
-    tabla: 'motos',
-    operacion: 'UPDATE',
-    payload: motoActualizada,
-    pk_value: id,
-  });
+      if (error) {
+        await db.motos.put(actualizado);
+        await encolar({ tabla: 'motos', operacion: 'UPDATE', payload: actualizado, pk_value: String(existente.id) });
+        return { success: true, saved: actualizado, localSaved: true };
+      }
 
-  return motoActualizada;
+      await db.motos.put({ ...actualizado, _sync_status: 'synced' });
+      return { success: true, saved: actualizado };
+    } catch {
+      await db.motos.put(actualizado);
+      await encolar({ tabla: 'motos', operacion: 'UPDATE', payload: actualizado, pk_value: String(existente.id) });
+      return { success: true, saved: actualizado, localSaved: true };
+    }
+  }
+
+  await db.motos.put(actualizado);
+  await encolar({ tabla: 'motos', operacion: 'UPDATE', payload: actualizado, pk_value: String(existente.id) });
+  return { success: true, saved: actualizado, localSaved: true };
 }
 
 export async function deleteMoto(id: number): Promise<void> {
@@ -65,4 +105,16 @@ export async function deleteMoto(id: number): Promise<void> {
     payload: { id },
     pk_value: id,
   });
+}
+
+async function guardarLocal(moto: Moto): Promise<string> {
+  const localId = `local-${Date.now()}`;
+  await db.motos.add({ ...moto, _local_id: localId } as any);
+  await encolar({
+    tabla: 'motos',
+    operacion: 'INSERT',
+    payload: moto,
+    pk_value: localId,
+  });
+  return localId;
 }

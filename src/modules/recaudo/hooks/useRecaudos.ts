@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { getRecaudos, createRecaudo, deleteRecaudo, getContratoById, type RecaudoInput, type ContratoWithCliente } from '../services/recaudoService';
 import { useOnlineStatus } from '../../../hooks/useOnlineStatus';
+import { useAuth } from '../../login/hooks/useAuth';
 import type { Recaudo } from '../../../db/schema';
 
 export interface RecaudoFilters {
@@ -13,7 +14,8 @@ export function useRecaudos() {
   const [recaudos, setRecaudos] = useState<Recaudo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const isOnline = useOnlineStatus();
+  const { isOnline } = useOnlineStatus();
+  const { user } = useAuth();
 
   const [filters, setFilters] = useState<RecaudoFilters>({
     contratoId: '',
@@ -64,12 +66,15 @@ export function useRecaudos() {
 
   const addRecaudo = async (input: RecaudoInput) => {
     try {
-      const newRecaudo = await createRecaudo(input);
-      setRecaudos(prev => [newRecaudo, ...prev]);
-      return { success: true, recaudo: newRecaudo };
+      const result = await createRecaudo({ ...input, usuario_id: user?.id });
+      if (result.success) {
+        await loadRecaudos();
+        return result;
+      }
+      return { success: false, error: result.error };
     } catch (err) {
       console.error('Error adding recaudo:', err);
-      return { success: false, error: err instanceof Error ? err.message : 'Error desconocido' };
+      return { success: false, error: err instanceof Error ? err.message : 'Error desconocido', localSaved: false };
     }
   };
 

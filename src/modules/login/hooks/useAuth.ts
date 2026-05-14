@@ -25,6 +25,9 @@ export function useAuth() {
         setAuthSession(response.user, response.token);
         setUser(response.user);
         setToken(response.token);
+        window.dispatchEvent(new CustomEvent('cdf-auth-event', {
+          detail: { action: 'login', user: response.user }
+        }));
         return true;
       } else {
         setError(response.message || 'Error desconocido');
@@ -42,6 +45,9 @@ export function useAuth() {
     clearAuthSession();
     setUser(null);
     setToken(null);
+    window.dispatchEvent(new CustomEvent('cdf-auth-event', {
+      detail: { action: 'logout' }
+    }));
   };
 
   return {

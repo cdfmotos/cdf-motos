@@ -1,0 +1,1 @@
+export { generarPDFRecibo, type ReciboPDFData } from './generarPDFRecibo';

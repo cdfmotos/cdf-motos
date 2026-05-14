@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { X, Search } from 'lucide-react';
+import { X, Search, Wifi, WifiOff } from 'lucide-react';
 import type { Contrato, Cliente, Moto } from '../../../../db/schema';
 import { db } from '../../../../db/db';
 import { StatusModal } from './StatusModal';
+import { useOnlineStatus } from '../../../../hooks/useOnlineStatus';
+import { useToast } from '../../../../components/ui/Toast/ToastContext';
 
 interface ContratoFormProps {
   contrato: Contrato | null;
@@ -13,6 +15,8 @@ interface ContratoFormProps {
 }
 
 export function ContratoForm({ contrato, onClose, onSave, loading, checkContratoActivoMoto }: ContratoFormProps) {
+  const { isOnline } = useOnlineStatus();
+  const { addToast } = useToast();
   const [formData, setFormData] = useState<Partial<Contrato>>({
     tipo_contrato: 'Prestamo',
     cliente_cedula: '',
@@ -75,7 +79,11 @@ export function ContratoForm({ contrato, onClose, onSave, loading, checkContrato
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    if (!isOnline) {
+      addToast('Sin conexión - el contrato se guardará localmente', 'warning');
+    }
+
     if (formData.tipo_contrato === 'Moto' && formData.placa) {
       // Validate active contract
       const isActivo = await checkContratoActivoMoto(formData.placa);
@@ -109,9 +117,15 @@ export function ContratoForm({ contrato, onClose, onSave, loading, checkContrato
       <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 flex items-center justify-center p-4">
         <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-in fade-in zoom-in duration-200">
           <div className="flex items-center justify-between p-6 border-b border-slate-100">
-            <h2 className="text-xl font-semibold text-slate-800">
-              {contrato ? 'Editar Contrato' : 'Nuevo Contrato'}
-            </h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-xl font-semibold text-slate-800">
+                {contrato ? 'Editar Contrato' : 'Nuevo Contrato'}
+              </h2>
+              <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${isOnline ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                {isOnline ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
+                {isOnline ? 'Online' : 'Offline'}
+              </div>
+            </div>
             <button
               onClick={onClose}
               className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"

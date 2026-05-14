@@ -62,23 +62,27 @@ export function useGps() {
 
   const addGps = async (gps: Omit<GPS, 'id' | '_sync_status' | 'created_at'>) => {
     try {
-      const newGps = await createGps(gps);
-      setGpsList(prev => [newGps, ...prev]);
-      return true;
+      const result = await createGps(gps);
+      if (result.success) {
+        await loadGps();
+      }
+      return result;
     } catch (err) {
       console.error('Error adding GPS:', err);
-      return false;
+      return { success: false, error: err instanceof Error ? err.message : 'Error desconocido' };
     }
   };
 
   const editGps = async (id: number, updates: Partial<Omit<GPS, 'id' | '_sync_status' | 'created_at'>>) => {
     try {
-      const updated = await updateGps(id, updates);
-      setGpsList(prev => prev.map(g => g.id === id ? updated : g));
-      return true;
+      const result = await updateGps(id, updates);
+      if (result.success) {
+        await loadGps();
+      }
+      return result;
     } catch (err) {
       console.error('Error updating GPS:', err);
-      return false;
+      return { success: false, error: err instanceof Error ? err.message : 'Error desconocido' };
     }
   };
 

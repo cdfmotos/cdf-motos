@@ -1,16 +1,14 @@
 import { db } from '../db';
 import { supabase } from '../../lib/supabase';
 import { marcarExitoso, marcarError } from './syncQueue';
+import { limpiarPayload } from '../../utils/sync';
 
 import type { SyncQueueItem } from '../schema';
 import type { Database } from '../../types/database.types';
 
-// Máximo de intentos antes de dejar error
 const MAX_INTENTOS = 3;
 
-// Tablas válidas de Supabase
-type TablaSupabase =
-  keyof Database['public']['Tables'];
+type TablaSupabase = keyof Database['public']['Tables'];
 
 class SyncEngine {
 
@@ -107,33 +105,51 @@ class SyncEngine {
     }
   }
 
-  private async ejecutarEnSupabase(
-    item: SyncQueueItem
-  ) {
-
-    const tabla =
-      item.tabla as TablaSupabase;
-
-    const datos = limpiarPayload(
-      item.payload as Record<string, unknown>
-    );
+  private async ejecutarEnSupabase(item: SyncQueueItem) {
+    const tabla = item.tabla as TablaSupabase;
 
     switch (item.operacion) {
 
       case 'INSERT': {
+        const pkStr = String(item.pk_value);
+        const datos = limpiarPayload(item.payload as Record<string, unknown>);
 
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from(tabla)
-          .insert(datos as any);
+          .insert(datos as any)
+          .select()
+          .single();
 
         if (error) {
           throw new Error(error.message);
+        }
+
+        if (pkStr.startsWith('local-') && (data as any)?.id != null) {
+          const tablaMap: Record<string, any> = {
+            recaudo: db.recaudo,
+            clientes: db.clientes,
+            contratos: db.contratos,
+            gastos: db.gastos,
+            motos: db.motos,
+            gps: db.gps,
+            soats: db.soats,
+            estado_sistema: db.estado_sistema,
+            notificaciones: db.notificaciones,
+          };
+          const dexieTabla = tablaMap[item.tabla];
+          if (dexieTabla) {
+            await dexieTabla.where('_local_id').equals(pkStr).modify({
+              id: (data as any).id,
+              _sync_status: 'synced',
+            });
+          }
         }
 
         break;
       }
 
       case 'UPDATE': {
+        const datos = limpiarPayload(item.payload as Record<string, unknown>);
 
         const { error } = await supabase
           .from(tabla)
@@ -169,10 +185,7 @@ class SyncEngine {
     }
   }
 
-  private async marcarRegistroSincronizado(
-    item: SyncQueueItem
-  ) {
-
+  private async marcarRegistroSincronizado(item: SyncQueueItem) {
     const tablaMap = {
       recaudo: db.recaudo,
       contratos: db.contratos,
@@ -185,37 +198,42 @@ class SyncEngine {
       notificaciones: db.notificaciones,
     };
 
-    const tabla =
-      tablaMap[
-      item.tabla as keyof typeof tablaMap
-      ];
-
+    const tabla = tablaMap[item.tabla as keyof typeof tablaMap];
     if (!tabla) return;
 
-    const pk =
-      item.tabla === 'estado_sistema'
-        ? item.pk_value
-        : Number(item.pk_value);
+    const pkStr = String(item.pk_value);
 
-    await tabla.update(pk as any, {
-      _sync_status: 'synced',
-    });
+    if (pkStr.startsWith('local-')) {
+      await (tabla as any).where('_local_id').equals(pkStr).modify({ _sync_status: 'synced' });
+    } else {
+      const pk = item.tabla === 'estado_sistema' ? pkStr : Number(item.pk_value);
+      await tabla.update(pk as any, { _sync_status: 'synced' });
+    }
+  }
+
+  async sincronizarItem(tabla: string, pkValue: string | number): Promise<boolean> {
+    if (!navigator.onLine) return false;
+
+    const item = await db.sync_queue
+      .where('tabla').equals(tabla)
+      .and(i => String(i.pk_value) === String(pkValue))
+      .first();
+
+    if (!item || !item.id) return false;
+
+    await db.sync_queue.update(item.id, { estado: 'processing' });
+
+    try {
+      await this.ejecutarEnSupabase(item);
+      await marcarExitoso(item.id);
+      await this.marcarRegistroSincronizado(item);
+      return true;
+    } catch (error) {
+      const mensaje = error instanceof Error ? error.message : 'Error desconocido';
+      await marcarError(item.id, mensaje);
+      return false;
+    }
   }
 }
 
-// Elimina campos internos Dexie
-function limpiarPayload(
-  payload: Record<string, unknown>
-) {
-
-  const datos = { ...payload };
-
-  delete datos._sync_status;
-  delete datos._local_id;
-  delete datos.id;
-
-  return datos;
-}
-
-export const syncEngine =
-  new SyncEngine();
+export const syncEngine = new SyncEngine();

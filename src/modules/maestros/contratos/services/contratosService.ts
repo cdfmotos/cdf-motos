@@ -1,5 +1,7 @@
 import { db } from '../../../../db/db';
 import { encolar } from '../../../../db/sync/syncQueue';
+import { supabase } from '../../../../lib/supabase';
+import { limpiarPayload } from '../../../../utils/sync';
 import type { Contrato } from '../../../../db/schema';
 
 export async function getContratos(): Promise<Contrato[]> {
@@ -18,67 +20,101 @@ export async function getContratosActivosByPlaca(placa: string): Promise<Contrat
     .toArray();
 }
 
-export async function createContrato(contrato: Omit<Contrato, 'id' | '_sync_status' | 'created_at'> & { id?: number }): Promise<Contrato> {
+export async function createContrato(
+  contrato: Omit<Contrato, 'id' | '_sync_status' | 'created_at'> & { id?: number }
+): Promise<{ success: boolean; saved?: Contrato; error?: string; localSaved?: boolean }> {
+  if (contrato.id) {
+    const existingById = await db.contratos.get(contrato.id);
+    if (existingById) {
+      return { success: false, error: 'Ya existe un contrato con este número de ID' };
+    }
+  }
+
+  if (contrato.tipo_contrato === 'Moto' && contrato.placa && contrato.cliente_cedula) {
+    const existingByCedulaPlaca = await db.contratos
+      .where('cliente_cedula').equalsIgnoreCase(contrato.cliente_cedula)
+      .filter(c => c.placa?.toLowerCase() === contrato.placa?.toLowerCase())
+      .first();
+    if (existingByCedulaPlaca) {
+      return { success: false, error: 'Ya existe un contrato para este cliente y placa' };
+    }
+  }
+
   const newContrato: Contrato = {
     ...contrato,
-    id: contrato.id ?? Date.now(), // ID temporal si no se provee o el id ingresado por usuario
+    id: contrato.id ?? Date.now(),
     _sync_status: 'pending',
     created_at: new Date().toISOString(),
   };
 
-  // 1. Guardar localmente
-  await db.contratos.add(newContrato);
+  if (navigator.onLine) {
+    try {
+      const { data, error } = await supabase
+        .from('contratos')
+        .insert(limpiarPayload(newContrato as unknown as Record<string, unknown>) as any)
+        .select()
+        .single();
 
-  // 2. Encolar para sincronización
-  await encolar({
-    tabla: 'contratos',
-    operacion: 'INSERT',
-    payload: newContrato,
-    pk_value: newContrato.id,
-  });
+      if (error) {
+        const localId = await guardarLocal(newContrato);
+        const saved = await db.contratos.where('_local_id').equals(localId).first();
+        return { success: true, saved, localSaved: true };
+      }
 
-  return newContrato;
+      await db.contratos.add({ ...data, _sync_status: 'synced' } as any);
+      const saved = await db.contratos.where('id').equals(data.id as number).first();
+      return { success: true, saved };
+    } catch {
+      const localId = await guardarLocal(newContrato);
+      const saved = await db.contratos.where('_local_id').equals(localId).first();
+      return { success: true, saved, localSaved: true };
+    }
+  }
+
+  const localId = await guardarLocal(newContrato);
+  const saved = await db.contratos.where('_local_id').equals(localId).first();
+  return { success: true, saved, localSaved: true };
 }
 
-export async function updateContrato(id: number, updates: Partial<Omit<Contrato, '_sync_status' | 'created_at'>>): Promise<Contrato> {
-  const contratoExistente = await db.contratos.get(id);
-  if (!contratoExistente) throw new Error('Contrato no encontrado');
+export async function updateContrato(
+  id: number,
+  updates: Partial<Omit<Contrato, '_sync_status' | 'created_at'>>
+): Promise<{ success: boolean; saved?: Contrato; error?: string; localSaved?: boolean }> {
+  const existente = await db.contratos.get(id);
+  if (!existente) return { success: false, error: 'Contrato no encontrado' };
 
-  const isIdChanged = updates.id !== undefined && updates.id !== id;
-  
-  const contratoActualizado: Contrato = {
-    ...contratoExistente,
+  const actualizado: Contrato = {
+    ...existente,
     ...updates,
+    id: updates.id !== undefined ? updates.id : id,
     _sync_status: 'pending',
   };
 
-  if (isIdChanged) {
-    // Si cambió el ID, borramos el viejo y creamos el nuevo localmente
-    await db.contratos.delete(id);
-    await db.contratos.add(contratoActualizado);
-    
-    // Al actualizar el ID primario, encolamos el update pero enviamos el id original como pk_value o borramos y creamos
-    // Para simplificar, mandamos el UPDATE con pk_value = id_original, Supabase deberá permitir UPDATE id
-    await encolar({
-      tabla: 'contratos',
-      operacion: 'UPDATE',
-      payload: contratoActualizado,
-      pk_value: id,
-    });
-  } else {
-    // 1. Actualizar localmente
-    await db.contratos.put(contratoActualizado);
+  if (navigator.onLine) {
+    try {
+      const { error } = await supabase
+        .from('contratos')
+        .update(limpiarPayload(actualizado as unknown as Record<string, unknown>) as any)
+        .eq('id', id);
 
-    // 2. Encolar
-    await encolar({
-      tabla: 'contratos',
-      operacion: 'UPDATE',
-      payload: contratoActualizado,
-      pk_value: id,
-    });
+      if (error) {
+        await db.contratos.put(actualizado);
+        await encolar({ tabla: 'contratos', operacion: 'UPDATE', payload: actualizado, pk_value: String(id) });
+        return { success: true, saved: actualizado, localSaved: true };
+      }
+
+      await db.contratos.put({ ...actualizado, _sync_status: 'synced' });
+      return { success: true, saved: actualizado };
+    } catch {
+      await db.contratos.put(actualizado);
+      await encolar({ tabla: 'contratos', operacion: 'UPDATE', payload: actualizado, pk_value: String(id) });
+      return { success: true, saved: actualizado, localSaved: true };
+    }
   }
 
-  return contratoActualizado;
+  await db.contratos.put(actualizado);
+  await encolar({ tabla: 'contratos', operacion: 'UPDATE', payload: actualizado, pk_value: String(id) });
+  return { success: true, saved: actualizado, localSaved: true };
 }
 
 export async function deleteContrato(id: number): Promise<void> {
@@ -90,4 +126,16 @@ export async function deleteContrato(id: number): Promise<void> {
     payload: { id },
     pk_value: id,
   });
+}
+
+async function guardarLocal(contrato: Contrato): Promise<string> {
+  const localId = `local-${Date.now()}`;
+  await db.contratos.add({ ...contrato, _local_id: localId } as any);
+  await encolar({
+    tabla: 'contratos',
+    operacion: 'INSERT',
+    payload: contrato,
+    pk_value: localId,
+  });
+  return localId;
 }

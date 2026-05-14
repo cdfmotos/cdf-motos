@@ -35,3 +35,15 @@ export function subscribeHydrateState(fn: () => void) {
   listeners.add(fn);
   return () => listeners.delete(fn);   // retorna unsubscribe
 }
+
+export function resetHydrateState() {
+  state = {
+    status: 'idle',
+    mensaje: '',
+    tablaActual: null,
+    pendientes: 0,
+    ultimaSync: null,
+    desincronizado: false,
+  };
+  listeners.forEach(fn => fn());
+}

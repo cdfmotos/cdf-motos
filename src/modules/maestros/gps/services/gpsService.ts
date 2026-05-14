@@ -1,5 +1,7 @@
 import { db } from '../../../../db/db';
 import { encolar } from '../../../../db/sync/syncQueue';
+import { supabase } from '../../../../lib/supabase';
+import { limpiarPayload } from '../../../../utils/sync';
 import type { GPS } from '../../../../db/schema';
 
 export async function getGpsList(): Promise<GPS[]> {
@@ -10,50 +12,88 @@ export async function getGpsByPlaca(placa: string): Promise<GPS | undefined> {
   return await db.gps.where('moto_placa').equalsIgnoreCase(placa).first();
 }
 
-export async function createGps(gps: Omit<GPS, 'id' | '_sync_status' | 'created_at'>): Promise<GPS> {
+export async function createGps(
+  gps: Omit<GPS, 'id' | '_sync_status' | 'created_at'>
+): Promise<{ success: boolean; saved?: GPS; error?: string; localSaved?: boolean }> {
+  const existingImei = await db.gps.where('gps_imei').equalsIgnoreCase(gps.gps_imei).first();
+  if (existingImei) {
+    return { success: false, error: 'Ya existe un GPS con este IMEI' };
+  }
+
   const newGps: GPS = {
     ...gps,
-    id: Date.now(), // ID temporal para Dexie
+    id: Date.now(),
     _sync_status: 'pending',
     created_at: new Date().toISOString(),
   };
 
-  // 1. Guardar localmente
-  await db.gps.add(newGps);
+  if (navigator.onLine) {
+    try {
+      const { data, error } = await supabase
+        .from('gps')
+        .insert(limpiarPayload(newGps as unknown as Record<string, unknown>) as any)
+        .select()
+        .single();
 
-  // 2. Encolar para sincronización
-  await encolar({
-    tabla: 'gps',
-    operacion: 'INSERT',
-    payload: newGps,
-    pk_value: newGps.id,
-  });
+      if (error) {
+        const localId = await guardarLocal(newGps);
+        const saved = await db.gps.where('_local_id').equals(localId).first();
+        return { success: true, saved, localSaved: true };
+      }
 
-  return newGps;
+      await db.gps.add({ ...data, _sync_status: 'synced' } as any);
+      const saved = await db.gps.where('id').equals(data.id as number).first();
+      return { success: true, saved };
+    } catch {
+      const localId = await guardarLocal(newGps);
+      const saved = await db.gps.where('_local_id').equals(localId).first();
+      return { success: true, saved, localSaved: true };
+    }
+  }
+
+  const localId = await guardarLocal(newGps);
+  const saved = await db.gps.where('_local_id').equals(localId).first();
+  return { success: true, saved, localSaved: true };
 }
 
-export async function updateGps(id: number, updates: Partial<Omit<GPS, 'id' | '_sync_status' | 'created_at'>>): Promise<GPS> {
-  const gpsExistente = await db.gps.get(id);
-  if (!gpsExistente) throw new Error('GPS no encontrado');
+export async function updateGps(
+  id: number,
+  updates: Partial<Omit<GPS, 'id' | '_sync_status' | 'created_at'>>
+): Promise<{ success: boolean; saved?: GPS; error?: string; localSaved?: boolean }> {
+  const existente = await db.gps.get(id);
+  if (!existente) return { success: false, error: 'GPS no encontrado' };
 
-  const gpsActualizado: GPS = {
-    ...gpsExistente,
+  const actualizado: GPS = {
+    ...existente,
     ...updates,
     _sync_status: 'pending',
   };
 
-  // 1. Actualizar localmente
-  await db.gps.put(gpsActualizado);
+  if (navigator.onLine) {
+    try {
+      const { error } = await supabase
+        .from('gps')
+        .update(limpiarPayload(actualizado as unknown as Record<string, unknown>) as any)
+        .eq('id', existente.id);
 
-  // 2. Encolar
-  await encolar({
-    tabla: 'gps',
-    operacion: 'UPDATE',
-    payload: gpsActualizado,
-    pk_value: id,
-  });
+      if (error) {
+        await db.gps.put(actualizado);
+        await encolar({ tabla: 'gps', operacion: 'UPDATE', payload: actualizado, pk_value: String(existente.id) });
+        return { success: true, saved: actualizado, localSaved: true };
+      }
 
-  return gpsActualizado;
+      await db.gps.put({ ...actualizado, _sync_status: 'synced' });
+      return { success: true, saved: actualizado };
+    } catch {
+      await db.gps.put(actualizado);
+      await encolar({ tabla: 'gps', operacion: 'UPDATE', payload: actualizado, pk_value: String(existente.id) });
+      return { success: true, saved: actualizado, localSaved: true };
+    }
+  }
+
+  await db.gps.put(actualizado);
+  await encolar({ tabla: 'gps', operacion: 'UPDATE', payload: actualizado, pk_value: String(existente.id) });
+  return { success: true, saved: actualizado, localSaved: true };
 }
 
 export async function deleteGps(id: number): Promise<void> {
@@ -65,4 +105,16 @@ export async function deleteGps(id: number): Promise<void> {
     payload: { id },
     pk_value: id,
   });
+}
+
+async function guardarLocal(gps: GPS): Promise<string> {
+  const localId = `local-${Date.now()}`;
+  await db.gps.add({ ...gps, _local_id: localId } as any);
+  await encolar({
+    tabla: 'gps',
+    operacion: 'INSERT',
+    payload: gps,
+    pk_value: localId,
+  });
+  return localId;
 }

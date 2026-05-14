@@ -11,7 +11,7 @@ interface PerfilModalProps {
 
 export function PerfilModal({ open, onClose }: PerfilModalProps) {
   const { user, updateUser } = useAuth();
-  const isOnline = useOnlineStatus();
+  const { isOnline } = useOnlineStatus();
 
   const [formData, setFormData] = useState({
     nombre_completo: '',

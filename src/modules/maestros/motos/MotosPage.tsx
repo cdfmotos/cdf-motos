@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useMotos } from './hooks/useMotos';
 import { MotosFilter } from './components/MotosFilter';
 import { MotosTable } from './components/MotosTable';
@@ -6,33 +6,51 @@ import { MotoForm } from './components/MotoForm';
 import { MotosExportModal } from './components/MotosExportModal';
 import { ExtractoMotoDialog } from './components/ExtractoMotoDialog';
 import { Plus, RefreshCcw, FileSpreadsheet } from 'lucide-react';
+import { syncEngine } from '../../../db/sync/syncEngine';
+import { useBlockedDay } from '../../../hooks/useBlockedDay';
+import { useAuthContext } from '../../../contexts/AuthContext';
+import { useToast } from '../../../components/ui/Toast';
 import type { Moto } from '../../../db/schema';
 
 export function MotosPage() {
-  const { motos, loading, error, filters, setFilters, addMoto, editMoto, removeMoto, syncMoto, reload } = useMotos();
-  
+  const { motos, loading, error, filters, setFilters, addMoto, editMoto, removeMoto, reload } = useMotos();
+  const { isAdmin } = useAuthContext();
+  const { canWrite } = useBlockedDay();
+  const { addToast } = useToast();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [editingMoto, setEditingMoto] = useState<Moto | null>(null);
   const [saving, setSaving] = useState(false);
   const [extractoMotoPlaca, setExtractoMotoPlaca] = useState<string | null>(null);
 
+  const handleSync = useCallback(async (moto: Moto) => {
+    const pk = moto._local_id ?? String(moto.id);
+    return await syncEngine.sincronizarItem('motos', pk);
+  }, []);
+
   const handleOpenNew = () => {
+    if (!canWrite()) {
+      addToast('El día está cerrado. No se permiten nuevos registros.', 'warning');
+      return;
+    }
     setEditingMoto(null);
     setIsFormOpen(true);
   };
 
   const handleEdit = (moto: Moto) => {
+    if (!isAdmin || !canWrite()) {
+      addToast('El día está cerrado o no tienes permisos para editar.', 'warning');
+      return;
+    }
     setEditingMoto(moto);
     setIsFormOpen(true);
   };
 
-  const handleCloseForm = () => {
-    setIsFormOpen(false);
-    setEditingMoto(null);
-  };
-
   const handleDelete = async (moto: Moto) => {
+    if (!isAdmin || !canWrite()) {
+      addToast('No tienes permisos para eliminar.', 'warning');
+      return;
+    }
     if (window.confirm(`¿Estás seguro de eliminar la moto con placa ${moto.placa}?`)) {
       await removeMoto(moto.id);
     }
@@ -42,18 +60,21 @@ export function MotosPage() {
     setExtractoMotoPlaca(moto.placa);
   };
 
+  const handleCloseForm = () => {
+    setIsFormOpen(false);
+    setEditingMoto(null);
+  };
+
   const handleSave = async (data: Partial<Omit<Moto, 'id' | '_sync_status' | 'created_at'>>) => {
     setSaving(true);
     try {
       if (editingMoto) {
-        await editMoto(editingMoto.id, data);
+        const result = await editMoto(editingMoto.id, data);
+        return result;
       } else {
-        await addMoto(data as Omit<Moto, 'id' | '_sync_status' | 'created_at'>);
+        const result = await addMoto(data as Omit<Moto, 'id' | '_sync_status' | 'created_at'>);
+        return result;
       }
-      handleCloseForm();
-    } catch (e) {
-      console.error('Error al guardar moto:', e);
-      alert('Error al guardar la moto. Verifique los datos.');
     } finally {
       setSaving(false);
     }
@@ -100,13 +121,14 @@ export function MotosPage() {
 
       <MotosFilter filters={filters} onChange={setFilters} />
       
-      <MotosTable 
-        data={motos} 
-        loading={loading} 
-        onEdit={handleEdit} 
+      <MotosTable
+        data={motos}
+        loading={loading}
+        onEdit={handleEdit}
         onDelete={handleDelete}
         onExtracto={handleExtracto}
-        onSync={syncMoto}
+        onSync={handleSync}
+        canEdit={isAdmin && canWrite()}
       />
 
       {isFormOpen && (

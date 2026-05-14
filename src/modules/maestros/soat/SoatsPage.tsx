@@ -1,26 +1,52 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useSoats } from './hooks/useSoats';
 import { SoatsFilter } from './components/SoatsFilter';
 import { SoatsTable } from './components/SoatsTable';
 import { SoatForm } from './components/SoatForm';
 import { SoatsExportModal } from './components/SoatsExportModal';
 import { Plus, RefreshCcw, FileSpreadsheet } from 'lucide-react';
+import { useToast } from '../../../components/ui/Toast';
+import { syncEngine } from '../../../db/sync/syncEngine';
+import { useBlockedDay } from '../../../hooks/useBlockedDay';
+import { useAuthContext } from '../../../contexts/AuthContext';
 import type { Soat } from '../../../db/schema';
 
 export function SoatsPage() {
   const { soats, loading, error, filters, setFilters, addSoat, editSoat, reload } = useSoats();
-  
+  const { addToast } = useToast();
+  const { isAdmin } = useAuthContext();
+  const { canWrite } = useBlockedDay();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [editingSoat, setEditingSoat] = useState<Soat | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const handleSync = useCallback(async (soat: Soat) => {
+    const pk = soat._local_id ?? String(soat.id);
+    const ok = await syncEngine.sincronizarItem('soats', pk);
+    if (ok) {
+      addToast('SOAT sincronizado correctamente', 'success');
+    } else {
+      addToast('Error al sincronizar. Se intentará automáticamente al reconectar.', 'error');
+    }
+    await reload();
+    return ok;
+  }, [addToast, reload]);
+
   const handleOpenNew = () => {
+    if (!canWrite()) {
+      addToast('El día está cerrado. No se permiten nuevos registros.', 'warning');
+      return;
+    }
     setEditingSoat(null);
     setIsFormOpen(true);
   };
 
   const handleEdit = (soat: Soat) => {
+    if (!isAdmin || !canWrite()) {
+      addToast('No tienes permisos para editar.', 'warning');
+      return;
+    }
     setEditingSoat(soat);
     setIsFormOpen(true);
   };
@@ -34,14 +60,12 @@ export function SoatsPage() {
     setSaving(true);
     try {
       if (editingSoat) {
-        await editSoat(editingSoat.id, data);
+        const result = await editSoat(editingSoat.id, data);
+        return result;
       } else {
-        await addSoat(data as Omit<Soat, 'id' | '_sync_status' | 'created_at'>);
+        const result = await addSoat(data as Omit<Soat, 'id' | '_sync_status' | 'created_at'>);
+        return result;
       }
-      handleCloseForm();
-    } catch (e) {
-      console.error('Error al guardar SOAT:', e);
-      alert('Error al guardar el SOAT. Verifique los datos.');
     } finally {
       setSaving(false);
     }
@@ -88,10 +112,12 @@ export function SoatsPage() {
 
       <SoatsFilter filters={filters} onChange={setFilters} />
       
-      <SoatsTable 
-        data={soats} 
-        loading={loading} 
-        onEdit={handleEdit} 
+      <SoatsTable
+        data={soats}
+        loading={loading}
+        onEdit={handleEdit}
+        onSync={handleSync}
+        canEdit={isAdmin && canWrite()}
       />
 
       {isFormOpen && (

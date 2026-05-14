@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X, Search, Wifi, WifiOff, AlertCircle } from 'lucide-react';
 import type { ContratoWithCliente } from '../services/recaudoService';
 import { useOnlineStatus } from '../../../hooks/useOnlineStatus';
+import { useToast } from '../../../components/ui/Toast';
 
 interface RecaudoFormProps {
   onClose: () => void;
@@ -11,7 +12,7 @@ interface RecaudoFormProps {
     fecha_recaudo: string;
     cuota_diaria_pactada: number;
     tipo_contrato: string;
-  }) => Promise<{ success: boolean; error?: string }>;
+  }) => Promise<{ success: boolean; error?: string; localSaved?: boolean }>;
   buscarContrato: (id: number) => Promise<ContratoWithCliente | null>;
 }
 
@@ -20,7 +21,8 @@ const nf = (v: number | null | undefined) =>
     .format(Number(v ?? 0));
 
 export function RecaudoForm({ onClose, onSubmit, buscarContrato }: RecaudoFormProps) {
-  const isOnline = useOnlineStatus();
+  const { isOnline } = useOnlineStatus();
+  const { addToast } = useToast();
   const [contratoId, setContratoId] = useState('');
   const [contrato, setContrato] = useState<ContratoWithCliente | null>(null);
   const [buscando, setBuscando] = useState(false);
@@ -75,7 +77,7 @@ export function RecaudoForm({ onClose, onSubmit, buscarContrato }: RecaudoFormPr
     setError('');
 
     const result = await onSubmit({
-      contrato_id: contrato.id,
+      contrato_id: contrato.id!,
       monto_recaudado: montoNum,
       fecha_recaudo: fecha,
       cuota_diaria_pactada: contrato.cuota_diaria,
@@ -85,6 +87,11 @@ export function RecaudoForm({ onClose, onSubmit, buscarContrato }: RecaudoFormPr
     setLoading(false);
 
     if (result.success) {
+      if (result.localSaved) {
+        addToast('Recaudo guardado localmente. Se sincronizará al reconectar.', 'warning');
+      } else {
+        addToast('Recaudo guardado y sincronizado correctamente', 'success');
+      }
       onClose();
     } else {
       setError(result.error || 'Error al guardar');
@@ -94,14 +101,13 @@ export function RecaudoForm({ onClose, onSubmit, buscarContrato }: RecaudoFormPr
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
       <div className="bg-card w-full max-w-2xl rounded-xl shadow-2xl flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
-        
+
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border">
           <h2 className="text-xl font-semibold text-slate-800">Nuevo Recaudo</h2>
           <div className="flex items-center gap-3">
-            <span className={`flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-full ${
-              isOnline ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
-            }`}>
+            <span className={`flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-full ${isOnline ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+              }`}>
               {isOnline ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
               {isOnline ? 'Online' : 'Offline'}
             </span>

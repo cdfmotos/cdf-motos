@@ -62,23 +62,27 @@ export function useSoats() {
 
   const addSoat = async (soat: Omit<Soat, 'id' | '_sync_status' | 'created_at'>) => {
     try {
-      const newSoat = await createSoat(soat);
-      setSoats(prev => [newSoat, ...prev]);
-      return true;
+      const result = await createSoat(soat);
+      if (result.success) {
+        await loadSoats();
+      }
+      return result;
     } catch (err) {
-      console.error('Error adding soat:', err);
-      return false;
+      console.error('Error adding SOAT:', err);
+      return { success: false, error: err instanceof Error ? err.message : 'Error desconocido' };
     }
   };
 
   const editSoat = async (id: number, updates: Partial<Omit<Soat, 'id' | '_sync_status' | 'created_at'>>) => {
     try {
-      const updated = await updateSoat(id, updates);
-      setSoats(prev => prev.map(s => s.id === id ? updated : s));
-      return true;
+      const result = await updateSoat(id, updates);
+      if (result.success) {
+        await loadSoats();
+      }
+      return result;
     } catch (err) {
-      console.error('Error updating soat:', err);
-      return false;
+      console.error('Error updating SOAT:', err);
+      return { success: false, error: err instanceof Error ? err.message : 'Error desconocido' };
     }
   };
 

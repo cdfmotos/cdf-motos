@@ -15,7 +15,7 @@ export function useMotos() {
   const [filteredMotos, setFilteredMotos] = useState<Moto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   const [filters, setFilters] = useState<MotoFilters>({
     placa: '',
     marca: '',
@@ -65,7 +65,6 @@ export function useMotos() {
       result = result.filter(m => m.fecha_compra && m.fecha_compra <= currentFilters.fechaFin);
     }
 
-    // Sort by fecha_compra DESC as default
     result.sort((a, b) => {
       const dateA = a.fecha_compra || '';
       const dateB = b.fecha_compra || '';
@@ -77,23 +76,27 @@ export function useMotos() {
 
   const addMoto = async (moto: Omit<Moto, 'id' | '_sync_status' | 'created_at'>) => {
     try {
-      const newMoto = await createMoto(moto);
-      setMotos(prev => [newMoto, ...prev]);
-      return true;
+      const result = await createMoto(moto);
+      if (result.success) {
+        await loadMotos();
+      }
+      return result;
     } catch (err) {
       console.error('Error adding moto:', err);
-      return false;
+      return { success: false, error: err instanceof Error ? err.message : 'Error desconocido' };
     }
   };
 
   const editMoto = async (id: number, updates: Partial<Omit<Moto, 'id' | '_sync_status' | 'created_at'>>) => {
     try {
-      const updated = await updateMoto(id, updates);
-      setMotos(prev => prev.map(m => m.id === id ? updated : m));
-      return true;
+      const result = await updateMoto(id, updates);
+      if (result.success) {
+        await loadMotos();
+      }
+      return result;
     } catch (err) {
       console.error('Error updating moto:', err);
-      return false;
+      return { success: false, error: err instanceof Error ? err.message : 'Error desconocido' };
     }
   };
 
@@ -108,21 +111,6 @@ export function useMotos() {
     }
   };
 
-  const syncMoto = async (moto: Moto) => {
-    if (moto._sync_status !== 'pending' && moto._sync_status !== 'error') return false;
-    
-    try {
-      // Intentar sincronizar la cola
-      const { syncEngine } = await import('../../../../db/sync/syncEngine');
-      await syncEngine.procesarCola();
-      await loadMotos(); // Recargar para reflejar cambios
-      return true;
-    } catch (err) {
-      console.error('Error syncing moto:', err);
-      return false;
-    }
-  };
-
   return {
     motos: filteredMotos,
     loading,
@@ -132,7 +120,6 @@ export function useMotos() {
     addMoto,
     editMoto,
     removeMoto,
-    syncMoto,
     reload: loadMotos,
   };
 }

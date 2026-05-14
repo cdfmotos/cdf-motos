@@ -1,4 +1,5 @@
-import { Bell, X, Check, FileText, AlertCircle, Info } from 'lucide-react';
+import { useState } from 'react';
+import { Bell, X, Check, FileText, AlertCircle, Info, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNotificaciones } from './hooks/useNotificaciones';
 import { formatDate } from '../../utils/formatters';
 
@@ -9,6 +10,8 @@ interface NotificacionesModalProps {
 
 export function NotificacionesModal({ open, onClose }: NotificacionesModalProps) {
   const { notificaciones, loading, markAsRead, markAllAsRead, unreadCount } = useNotificaciones();
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   if (!open) return null;
 
@@ -18,6 +21,20 @@ export function NotificacionesModal({ open, onClose }: NotificacionesModalProps)
       case 'alerta': return <AlertCircle className="w-5 h-5 text-red-500" />;
       default: return <Info className="w-5 h-5 text-primary" />;
     }
+  };
+
+  const totalPages = Math.ceil(notificaciones.length / itemsPerPage);
+  const currentNotificaciones = notificaciones.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) setCurrentPage(prev => prev + 1);
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) setCurrentPage(prev => prev - 1);
   };
 
   return (
@@ -75,7 +92,7 @@ export function NotificacionesModal({ open, onClose }: NotificacionesModalProps)
               <p className="text-sm">No tienes notificaciones</p>
             </div>
           ) : (
-            notificaciones.map((noti) => (
+            currentNotificaciones.map((noti) => (
               <div 
                 key={noti.usuario_notificacion_id}
                 onClick={() => {
@@ -116,6 +133,31 @@ export function NotificacionesModal({ open, onClose }: NotificacionesModalProps)
             ))
           )}
         </div>
+
+        {/* Paginación */}
+        {!loading && notificaciones.length > 0 && (
+          <div className="flex items-center justify-between px-5 py-3 border-t border-border bg-slate-50">
+            <span className="text-xs text-slate-500 font-medium">
+              Pág {currentPage} de {totalPages || 1}
+            </span>
+            <div className="flex gap-1">
+              <button
+                onClick={handlePrevPage}
+                disabled={currentPage === 1}
+                className="p-1.5 rounded-lg border border-border bg-white text-slate-600 disabled:opacity-50 hover:bg-slate-50 transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                onClick={handleNextPage}
+                disabled={currentPage >= totalPages}
+                className="p-1.5 rounded-lg border border-border bg-white text-slate-600 disabled:opacity-50 hover:bg-slate-50 transition-colors"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>

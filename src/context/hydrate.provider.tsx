@@ -5,12 +5,12 @@ import {
   subscribeHydrateState
 } from '../db/sync/hydrateState';
 import { verificarDesincronizacion } from '../db/sync/hydrate';
-import { useAuth } from '../modules/login/hooks/useAuth'; 
+import { useAuthContext } from '../contexts/AuthContext';
 
 export function HydrateProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState(getHydrateState);
 
-  const { user } = useAuth(); // 👈 detectar login
+  const { user } = useAuthContext();
 
   // 🔥 Sync automático cuando hay usuario logueado
   useEffect(() => {

@@ -1,17 +1,24 @@
 import { DataTable } from '../../../../components/ui/DataTable';
 import { Badge } from '../../../../components/ui/Badge';
-import { Edit2, FileText } from 'lucide-react';
+import { Edit2, FileText, CloudUpload, Loader2 } from 'lucide-react';
 import type { Contrato } from '../../../../db/schema';
 import { formatCurrency } from '../../../../utils/formatters';
+import { useOnlineStatus } from '../../../../hooks/useOnlineStatus';
+import { useState } from 'react';
 
 interface ContratosTableProps {
   data: Contrato[];
   loading: boolean;
   onEdit: (contrato: Contrato) => void;
   onExtracto: (contrato: Contrato) => void;
+  onSync?: (id: number) => Promise<boolean>;
+  canEdit?: boolean;
 }
 
-export function ContratosTable({ data, loading, onEdit, onExtracto }: ContratosTableProps) {
+export function ContratosTable({ data, loading, onEdit, onExtracto, onSync, canEdit = false }: ContratosTableProps) {
+  const { isOnline } = useOnlineStatus();
+  const [syncingIds, setSyncingIds] = useState<Set<number | string>>(new Set());
+
   const getEstadoBadge = (estado: string | null) => {
     switch (estado?.toLowerCase()) {
       case 'activo':
@@ -87,6 +94,33 @@ export function ContratosTable({ data, loading, onEdit, onExtracto }: ContratosT
       accessorKey: 'actions',
       cell: (item: Contrato) => (
         <div className="flex items-center gap-2">
+          {onSync && item._sync_status !== 'synced' && (
+            <button
+              onClick={async (e) => {
+                e.stopPropagation();
+                if (!onSync || !isOnline) return;
+                setSyncingIds(prev => new Set(prev).add(item.id));
+                try {
+                  await onSync(item.id);
+                } finally {
+                  setSyncingIds(prev => {
+                    const next = new Set(prev);
+                    next.delete(item.id);
+                    return next;
+                  });
+                }
+              }}
+              disabled={!isOnline || syncingIds.has(item.id)}
+              className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
+              title="Sincronizar"
+            >
+              {syncingIds.has(item.id) ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <CloudUpload className="w-4 h-4" />
+              )}
+            </button>
+          )}
           <button
             onClick={() => onExtracto(item)}
             className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
@@ -95,9 +129,9 @@ export function ContratosTable({ data, loading, onEdit, onExtracto }: ContratosT
             <FileText className="w-4 h-4" />
           </button>
           <button
-            onClick={() => onEdit(item)}
-            className="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
-            title="Editar contrato"
+            onClick={() => canEdit && onEdit(item)}
+            className={`p-1.5 rounded transition-colors ${canEdit ? 'text-slate-400 hover:text-primary hover:bg-primary/10' : 'text-slate-300 cursor-not-allowed'}`}
+            title={canEdit ? 'Editar contrato' : 'Solo Admin puede editar'}
           >
             <Edit2 className="w-4 h-4" />
           </button>

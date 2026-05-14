@@ -14,17 +14,20 @@ import { ControlDiarioPage } from './modules/controlDiario/ControlDiarioPage';
 import { IndicadoresPage } from './modules/indicadores/IndicadoresPage';
 import { GestionUsuariosPage } from './modules/gestionUsuarios/GestionUsuariosPage';
 import { ConfiguracionPage } from './modules/configuracion/ConfiguracionPage';
+import { MisRecaudosPage } from './modules/misRecaudos/MisRecaudosPage';
 
 import { Sidebar } from './components/layout/Sidebar';
 import { CambioEstadoContratoModal } from './components/CambioEstadoContratoModal';
 import { ReporteRecaudosModal } from './components/ReporteRecaudosModal';
 import { HydrateProvider } from './context/hydrate.provider';
 import { SyncStatusBar } from './components/SyncStatusBar';
-import { useAuth } from './modules/login/hooks/useAuth';
+import { ToastProvider, ToastContainer } from './components/ui/Toast';
+import { AuthProvider, useAuthContext } from './contexts/AuthContext';
+import { BlockedDayAlert } from './components/auth/BlockedDayAlert';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
 
 function ProtectedLayout() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuthContext();
   const isOnline = useOnlineStatus();
   const [openCambioEstado, setOpenCambioEstado] = useState(false);
   const [openReporteRecaudos, setOpenReporteRecaudos] = useState(false);
@@ -62,6 +65,7 @@ function ProtectedLayout() {
         {/* TOP BAR */}
         <div className="shrink-0">
           <SyncStatusBar />
+          <BlockedDayAlert />
         </div>
 
         {/* CONTENIDO SCROLL */}
@@ -84,7 +88,7 @@ function ProtectedLayout() {
 }
 
 function PublicLayout() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuthContext();
 
   if (isAuthenticated) {
     return <Navigate to="/inicio" replace />;
@@ -95,9 +99,11 @@ function PublicLayout() {
 
 function App() {
   return (
-    <HydrateProvider>
-      <BrowserRouter>
-        <Routes>
+    <ToastProvider>
+      <AuthProvider>
+        <HydrateProvider>
+          <BrowserRouter>
+          <Routes>
           {/* RUTAS PÚBLICAS */}
           <Route element={<PublicLayout />}>
             <Route path="/login" element={<Login />} />
@@ -117,14 +123,18 @@ function App() {
             <Route path="/control-diario" element={<ControlDiarioPage />} />
             <Route path="/gastos" element={<GastosPage />} />
             <Route path="/recaudo" element={<RecaudosPage />} />
+            <Route path="/mis-recaudos" element={<MisRecaudosPage />} />
           </Route>
 
           {/* RUTAS POR DEFECTO Y FALLBACK */}
           <Route path="/" element={<Navigate to="/inicio" replace />} />
           <Route path="*" element={<Navigate to="/inicio" replace />} />
         </Routes>
-      </BrowserRouter>
-    </HydrateProvider>
+        <ToastContainer />
+          </BrowserRouter>
+        </HydrateProvider>
+      </AuthProvider>
+    </ToastProvider>
   );
 }
 

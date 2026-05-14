@@ -1,15 +1,61 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, DollarSign } from 'lucide-react';
 import { useRecaudos } from './hooks/useRecaudos';
 import { RecaudosTable } from './components/RecaudosTable';
 import { RecaudosFilter } from './components/RecaudosFilter';
 import { RecaudoForm } from './components/RecaudoForm';
+import { RecaudoEditModal } from './components/RecaudoEditModal';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
+import { useToast } from '../../components/ui/Toast';
+import { generarPDFRecibo } from './utils';
+import { db } from '../../db/db';
+import type { Recaudo } from '../../db/schema';
+import { useBlockedDay } from '../../hooks/useBlockedDay';
 
 export function RecaudosPage() {
-  const { recaudo, loading, filters, setFilters, addRecaudo, buscarContrato } = useRecaudos();
+  const { recaudo, loading, filters, setFilters, addRecaudo, buscarContrato, reload } = useRecaudos();
+  const { isOnline } = useOnlineStatus();
+  const { addToast } = useToast();
+  const { canWrite } = useBlockedDay();
   const [showForm, setShowForm] = useState(false);
-  const isOnline = useOnlineStatus();
+  const [editingRecaudo, setEditingRecaudo] = useState<Recaudo | null>(null);
+  const [printQueue, setPrintQueue] = useState<Recaudo[]>([]);
+
+  useEffect(() => {
+    if (printQueue.length > 0) {
+      const r = printQueue[0];
+      abrirPDFRecibo(r);
+      setPrintQueue(prev => prev.slice(1));
+    }
+  }, [printQueue]);
+
+  const abrirPDFRecibo = async (r: Recaudo) => {
+    try {
+      const contrato = await db.contratos.get(r.contrato_id);
+      if (!contrato) {
+        addToast('No se encontró el contrato para generar el recibo', 'error');
+        return;
+      }
+
+      let cliente = null;
+      if (contrato.cliente_cedula) {
+        cliente = await db.clientes.where('cedula').equals(contrato.cliente_cedula).first();
+      }
+
+      generarPDFRecibo({
+        numeroRecaudo: r.numero_recaudo ?? `N/A`,
+        fechaRecaudo: new Date(r.fecha_recaudo),
+        contratoNum: String(r.contrato_id),
+        placa: contrato.placa,
+        nombres: cliente ? `${cliente.nombres} ${cliente.apellidos}` : 'N/A',
+        cedula: cliente?.cedula ?? 'N/A',
+        montoRecaudado: r.monto_recaudado,
+        saldoPendiente: r.nuevo_saldo ?? r.saldo_pendiente ?? 0,
+      });
+    } catch {
+      addToast('Error al generar el recibo PDF', 'error');
+    }
+  };
 
   const handleSubmit = async (data: {
     contrato_id: number;
@@ -18,8 +64,20 @@ export function RecaudosPage() {
     cuota_diaria_pactada: number;
     tipo_contrato: string;
   }) => {
-    return await addRecaudo(data);
+    const result = await addRecaudo(data);
+    if (result.success && result.recaudo) {
+      setPrintQueue(prev => [...prev, result.recaudo!]);
+    }
+    return result;
   };
+
+  const handleEdit = useCallback((r: Recaudo) => {
+    setEditingRecaudo(r);
+  }, []);
+
+  const handlePrint = useCallback((r: Recaudo) => {
+    setPrintQueue(prev => [...prev, r]);
+  }, []);
 
   const totalRecaudado = recaudo.reduce((sum, r) => sum + (r.monto_recaudado ?? 0), 0);
   const nf = (v: number) =>
@@ -34,7 +92,13 @@ export function RecaudosPage() {
           <p className="text-slate-500">Registro y gestión de recaudos</p>
         </div>
         <button
-          onClick={() => setShowForm(true)}
+          onClick={() => {
+            if (!canWrite()) {
+              addToast('El día está cerrado. No se permiten nuevos registros.', 'warning');
+              return;
+            }
+            setShowForm(true);
+          }}
           className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
         >
           <Plus className="w-5 h-5" />
@@ -87,7 +151,13 @@ export function RecaudosPage() {
       <RecaudosFilter filters={filters} onChange={setFilters} />
 
       {/* Table */}
-      <RecaudosTable recaudo={recaudo} loading={loading} />
+      <RecaudosTable
+        recaudo={recaudo}
+        loading={loading}
+        onSyncSuccess={reload}
+        onEdit={handleEdit}
+        onPrint={handlePrint}
+      />
 
       {/* Form Modal */}
       {showForm && (
@@ -95,6 +165,15 @@ export function RecaudosPage() {
           onClose={() => setShowForm(false)}
           onSubmit={handleSubmit}
           buscarContrato={buscarContrato}
+        />
+      )}
+
+      {/* Edit Modal */}
+      {editingRecaudo && (
+        <RecaudoEditModal
+          recaudo={editingRecaudo}
+          onClose={() => setEditingRecaudo(null)}
+          onSave={() => { setEditingRecaudo(null); reload(); }}
         />
       )}
     </div>

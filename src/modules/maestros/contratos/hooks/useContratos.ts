@@ -27,9 +27,11 @@ export function useContratos() {
 
   const addContrato = async (contrato: Omit<Contrato, 'id' | '_sync_status' | 'created_at'> & { id?: number }) => {
     try {
-      const newContrato = await contratosService.createContrato(contrato);
-      setContratos(prev => [...prev, newContrato]);
-      return { success: true, data: newContrato };
+      const result = await contratosService.createContrato(contrato);
+      if (result.success) {
+        await loadContratos();
+      }
+      return result as { success: boolean; saved?: Contrato; error?: string; localSaved?: boolean };
     } catch (err: any) {
       console.error('Error al crear contrato:', err);
       return { success: false, error: err.message || 'Error al crear el contrato' };
@@ -38,9 +40,11 @@ export function useContratos() {
 
   const updateContrato = async (id: number, updates: Partial<Omit<Contrato, '_sync_status' | 'created_at'>>) => {
     try {
-      const updatedContrato = await contratosService.updateContrato(id, updates);
-      setContratos(prev => prev.map(c => c.id === id ? updatedContrato : c));
-      return { success: true, data: updatedContrato };
+      const result = await contratosService.updateContrato(id, updates);
+      if (result.success) {
+        await loadContratos();
+      }
+      return result as { success: boolean; saved?: Contrato; error?: string; localSaved?: boolean };
     } catch (err: any) {
       console.error('Error al actualizar contrato:', err);
       return { success: false, error: err.message || 'Error al actualizar el contrato' };

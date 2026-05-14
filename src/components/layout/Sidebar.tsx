@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { NotificacionesModal } from '../notificaciones/NotificacionesModal';
 import { PerfilModal } from '../perfil/PerfilModal';
 import { useNotificaciones } from '../notificaciones/hooks/useNotificaciones';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
+import { useAuthContext } from '../../contexts/AuthContext';
+import { clearAuthSession, AUTH_USER_KEY, AUTH_TOKEN_KEY } from '../../modules/login/utils/authUtils';
+import { resetHydrateState } from '../../db/sync/hydrateState';
+import { db } from '../../db/db';
 import {
     Home,
     Database,
@@ -49,8 +53,46 @@ export function Sidebar({ onOpenCambioEstado, onOpenReporteRecaudos }: SidebarPr
     const [openDropdown, setOpenDropdown] = useState<string | null>(null);
     const [isNotificacionesOpen, setNotificacionesOpen] = useState(false);
     const [isPerfilOpen, setPerfilOpen] = useState(false);
-    const isOnline = useOnlineStatus();
+    const { isOnline } = useOnlineStatus();
+    const { isAdmin, isCajero, clearUser } = useAuthContext();
     const { unreadCount } = useNotificaciones();
+    const navigate = useNavigate();
+
+    const handleLogout = async () => {
+        try {
+            await Promise.all([
+                db.clientes.clear(),
+                db.contratos.clear(),
+                db.recaudo.clear(),
+                db.gastos.clear(),
+                db.motos.clear(),
+                db.gps.clear(),
+                db.soats.clear(),
+                db.estado_sistema.clear(),
+                db.notificaciones.clear(),
+                db.usuario_notificaciones.clear(),
+                db.users.clear(),
+                db.sync_queue.clear()
+            ]);
+
+            resetHydrateState();
+            clearAuthSession();
+            clearUser();
+
+            localStorage.removeItem(AUTH_TOKEN_KEY);
+            localStorage.removeItem(AUTH_USER_KEY);
+
+            navigate('/login');
+        } catch (error) {
+            console.error('Error clearing database during logout', error);
+            resetHydrateState();
+            clearAuthSession();
+            clearUser();
+            localStorage.removeItem(AUTH_TOKEN_KEY);
+            localStorage.removeItem(AUTH_USER_KEY);
+            navigate('/login');
+        }
+    };
 
     const toggleDropdown = (title: string) => {
         setOpenDropdown(openDropdown === title ? null : title);
@@ -66,32 +108,54 @@ export function Sidebar({ onOpenCambioEstado, onOpenReporteRecaudos }: SidebarPr
 
     const NAV_ITEMS: NavItem[] = [
         { title: 'Inicio', path: '/inicio', icon: <Home className="w-5 h-5" /> },
-        {
-            title: 'Maestros',
-            icon: <Database className="w-5 h-5" />,
-            children: [
-                { title: 'Maestro Motos', path: '/maestros/motos', icon: <Bike className="w-4 h-4" /> },
-                { title: 'Maestro SOAT', path: '/maestros/soat', icon: <ShieldCheck className="w-4 h-4" /> },
-                { title: 'Maestro GPS', path: '/maestros/gps', icon: <MapPin className="w-4 h-4" /> },
-                { title: 'Maestro Clientes', path: '/maestros/clientes', icon: <Users className="w-4 h-4" /> },
-                { title: 'Maestro Contratos', path: '/maestros/contratos', icon: <FileText className="w-4 h-4" /> },
-            ]
-        },
-        { title: 'Control Diario', path: '/control-diario', icon: <Activity className="w-5 h-5" /> },
+    ];
+
+    if (isAdmin || isCajero) {
+      NAV_ITEMS.push({
+        title: 'Maestros',
+        icon: <Database className="w-5 h-5" />,
+        children: [
+          { title: 'Maestro Motos', path: '/maestros/motos', icon: <Bike className="w-4 h-4" /> },
+          { title: 'Maestro SOAT', path: '/maestros/soat', icon: <ShieldCheck className="w-4 h-4" /> },
+          { title: 'Maestro GPS', path: '/maestros/gps', icon: <MapPin className="w-4 h-4" /> },
+          { title: 'Maestro Clientes', path: '/maestros/clientes', icon: <Users className="w-4 h-4" /> },
+          { title: 'Maestro Contratos', path: '/maestros/contratos', icon: <FileText className="w-4 h-4" /> },
+        ]
+      });
+    }
+
+    NAV_ITEMS.push(
+      { title: 'Control Diario', path: '/control-diario', icon: <Activity className="w-5 h-5" /> }
+    );
+
+    if (isAdmin || isCajero) {
+      NAV_ITEMS.push(
         { title: 'Recaudos', path: '/recaudo', icon: <Wallet className="w-5 h-5" /> },
         { title: 'Mis Recaudos', path: '/mis-recaudos', icon: <CreditCard className="w-5 h-5" /> },
         { title: 'Gastos', path: '/gastos', icon: <Receipt className="w-5 h-5" /> },
-        { title: 'Indicadores', path: '/indicadores', icon: <LineChart className="w-5 h-5" /> },
-        {
-            title: 'Generar Reporte',
-            icon: <FileText className="w-5 h-5" />,
-            children: [
-                { title: 'Reporte de Contrato', onClick: onOpenCambioEstado, icon: <FileText className="w-4 h-4" /> },
-                { title: 'Reporte de Recaudos', onClick: onOpenReporteRecaudos, icon: <FileText className="w-4 h-4" /> },
-            ]
-        },
-        { title: 'Gestión de Usuarios', path: '/usuarios', icon: <Users className="w-5 h-5" /> },
-    ];
+      );
+    }
+
+    NAV_ITEMS.push({ title: 'Indicadores', path: '/indicadores', icon: <LineChart className="w-5 h-5" /> });
+
+    if ((isAdmin || isCajero) && isOnline) {
+      NAV_ITEMS.push({
+        title: 'Generar Reporte',
+        icon: <FileText className="w-5 h-5" />,
+        children: [
+          { title: 'Reporte de Contrato', onClick: onOpenCambioEstado, icon: <FileText className="w-4 h-4" /> },
+          { title: 'Reporte de Recaudos', onClick: onOpenReporteRecaudos, icon: <FileText className="w-4 h-4" /> },
+        ]
+      });
+    }
+
+    if (isAdmin) {
+      NAV_ITEMS.push({ title: 'Gestión de Usuarios', path: '/usuarios', icon: <Users className="w-5 h-5" /> });
+    }
+
+    if (isAdmin || isCajero) {
+      NAV_ITEMS.push({ title: 'Configuración', path: '/configuracion', icon: <Settings className="w-5 h-5" /> });
+    }
 
     return (
         <>
@@ -220,7 +284,10 @@ export function Sidebar({ onOpenCambioEstado, onOpenReporteRecaudos }: SidebarPr
                         </NavLink>
                     </div>
 
-                    <button className="flex items-center w-full px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-red-500/20 text-red-200 transition-colors">
+                    <button 
+                        onClick={handleLogout}
+                        className="flex items-center w-full px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-red-500/20 text-red-200 transition-colors"
+                    >
                         <LogOut className="w-5 h-5" />
                         <span className="ml-3">Cerrar Sesión</span>
                     </button>

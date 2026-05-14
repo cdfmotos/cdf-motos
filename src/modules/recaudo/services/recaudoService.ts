@@ -1,7 +1,8 @@
 import { db } from '../../../db/db';
-import { encolar } from '../../../db/sync/syncQueue';
+import { encolar, guardarEnDexieConCola } from '../../../db/sync/syncQueue';
 import { supabase } from '../../../lib/supabase';
-import type { Recaudo, Cliente } from '../../../db/schema';
+import { limpiarPayload } from '../../../utils/sync';
+import type { Recaudo, Cliente, RecaudoInsert, RecaudoUpdate } from '../../../db/schema';
 
 export interface ContratoWithCliente {
   id?: number;
@@ -94,6 +95,11 @@ export async function getRecaudos(): Promise<Recaudo[]> {
   return await db.recaudo.orderBy('fecha_recaudo').reverse().toArray();
 }
 
+export async function getMisRecaudos(usuarioId: string): Promise<Recaudo[]> {
+  const all = await db.recaudo.orderBy('fecha_recaudo').reverse().toArray();
+  return all.filter(r => r.usuario_id === usuarioId);
+}
+
 export async function getRecaudosByContrato(contratoId: number): Promise<Recaudo[]> {
   return await db.recaudo
     .where('contrato_id')
@@ -101,48 +107,93 @@ export async function getRecaudosByContrato(contratoId: number): Promise<Recaudo
     .sortBy('fecha_recaudo');
 }
 
-export async function createRecaudo(input: RecaudoInput): Promise<Recaudo> {
-  const contrato = await db.contratos.get(input.contrato_id);
-  if (!contrato) throw new Error('Contrato no encontrado');
+const inFlight = new Set<string>();
 
-  const { saldo } = await getSaldoPendiente(input.contrato_id, false);
+export async function createRecaudo(input: RecaudoInput): Promise<{
+  success: boolean;
+  error?: string;
+  localSaved?: boolean;
+  recaudo?: Recaudo;
+}> {
+  const idempotencyKey = `${input.contrato_id}-${input.fecha_recaudo}-${input.monto_recaudado}`;
 
-  const saldoPendiente = saldo ?? contrato.valor_contrato;
-  const monto = input.monto_recaudado;
-  const cuota = input.cuota_diaria_pactada;
+  if (inFlight.has(idempotencyKey)) {
+    return { success: false, error: 'Ya se está procesando un recaudo idéntico' };
+  }
 
-  const nuevoSaldo = saldoPendiente - monto;
-  const diasPagados = Math.floor(monto / cuota);
-  const abono = Math.max(monto - (cuota * diasPagados), 0);
+  inFlight.add(idempotencyKey);
 
-  const newRecaudo: Recaudo = {
-    contrato_id: input.contrato_id,
-    monto_recaudado: monto,
-    cuota_diaria_pactada: cuota,
-    fecha_recaudo: input.fecha_recaudo,
-    tipo_contrato: input.tipo_contrato,
-    usuario_id: input.usuario_id ?? null,
-    numero_recaudo: `TMP-${Date.now()}`,
-    saldo_pendiente: saldoPendiente,
-    nuevo_saldo: nuevoSaldo,
-    dias_pagados: diasPagados,
-    abono: abono,
-    created_at: new Date().toISOString(),
-    _sync_status: 'pending',
-  };
+  try {
+    const existing = await db.recaudo
+      .where('contrato_id')
+      .equals(input.contrato_id)
+      .and(r => r.fecha_recaudo === input.fecha_recaudo && r.monto_recaudado === input.monto_recaudado)
+      .first();
 
-  await db.recaudo.add(newRecaudo as any);
+    if (existing) {
+      return { success: false, error: 'Este recaudo ya fue registrado' };
+    }
 
-  await encolar({
-    tabla: 'recaudo',
-    operacion: 'INSERT',
-    payload: newRecaudo,
-    pk_value: newRecaudo.id,
-  });
+    const contrato = await db.contratos.get(input.contrato_id);
+    if (!contrato) return { success: false, error: 'Contrato no encontrado' };
 
-  await recalcularSaldosContrato(input.contrato_id);
+    const { saldo } = await getSaldoPendiente(input.contrato_id, false);
+    const saldoPendiente = saldo ?? contrato.valor_contrato;
+    const monto = input.monto_recaudado;
+    const cuota = input.cuota_diaria_pactada;
+    const nuevoSaldo = saldoPendiente - monto;
+    const diasPagados = Math.floor(monto / cuota);
+    const abono = Math.max(monto - (cuota * diasPagados), 0);
 
-  return newRecaudo;
+    const newRecaudo: RecaudoInsert = {
+      contrato_id: input.contrato_id,
+      monto_recaudado: monto,
+      cuota_diaria_pactada: cuota,
+      fecha_recaudo: input.fecha_recaudo,
+      tipo_contrato: input.tipo_contrato,
+      usuario_id: input.usuario_id ?? null,
+      numero_recaudo: `TMP-${Date.now()}`,
+      saldo_pendiente: saldoPendiente,
+      nuevo_saldo: nuevoSaldo,
+      dias_pagados: diasPagados,
+      abono: abono,
+      created_at: new Date().toISOString(),
+    };
+
+    if (navigator.onLine) {
+      try {
+        const { data, error } = await supabase
+          .from('recaudo')
+          .insert(limpiarPayload(newRecaudo) as any)
+          .select()
+          .single();
+
+        if (error) {
+          const localId = await guardarEnDexieConCola(newRecaudo);
+          await recalcularSaldosContrato(input.contrato_id);
+          const saved = await db.recaudo.where('_local_id').equals(localId).first();
+          return { success: true, localSaved: true, recaudo: saved };
+        }
+
+        await db.recaudo.add({ ...data, _sync_status: 'synced' } as any);
+        await recalcularSaldosContrato(input.contrato_id);
+        const saved = await db.recaudo.where('id').equals(data.id as number).first();
+        return { success: true, recaudo: saved };
+      } catch {
+        const localId = await guardarEnDexieConCola(newRecaudo);
+        await recalcularSaldosContrato(input.contrato_id);
+        const saved = await db.recaudo.where('_local_id').equals(localId).first();
+        return { success: true, localSaved: true, recaudo: saved };
+      }
+    } else {
+      const localId = await guardarEnDexieConCola(newRecaudo);
+      await recalcularSaldosContrato(input.contrato_id);
+      const saved = await db.recaudo.where('_local_id').equals(localId).first();
+      return { success: true, localSaved: true, recaudo: saved };
+    }
+  } finally {
+    inFlight.delete(idempotencyKey);
+  }
 }
 
 export async function recalcularSaldosContrato(contratoId: number): Promise<void> {
@@ -183,11 +234,11 @@ export async function recalcularSaldosContrato(contratoId: number): Promise<void
   await Promise.all(updates.map(u => db.recaudo.update(u.key, u.changes)));
 }
 
-export async function updateRecaudo(id: number, updates: Partial<RecaudoInput>): Promise<Recaudo> {
+export async function updateRecaudo(id: number, updates: Partial<RecaudoInput>): Promise<RecaudoUpdate> {
   const recaudoExistente = await db.recaudo.get(id);
   if (!recaudoExistente) throw new Error('Recaudo no encontrado');
 
-  const recaudoActualizado: Recaudo = {
+  const recaudoActualizado: RecaudoUpdate = {
     ...recaudoExistente,
     ...updates,
     _sync_status: 'pending',
@@ -205,6 +256,46 @@ export async function updateRecaudo(id: number, updates: Partial<RecaudoInput>):
   await recalcularSaldosContrato(recaudoExistente.contrato_id);
 
   return recaudoActualizado;
+}
+
+export async function editarMontoRecaudo(id: number, nuevoMonto: number): Promise<RecaudoUpdate> {
+  const recaudo = await db.recaudo.get(id);
+  if (!recaudo) throw new Error('Recaudo no encontrado');
+
+  if (recaudo._sync_status !== 'pending') {
+    throw new Error('Solo se pueden editar recaudos pendientes');
+  }
+
+  const contrato = await db.contratos.get(recaudo.contrato_id);
+  if (!contrato) throw new Error('Contrato no encontrado');
+
+  const { saldo } = await getSaldoPendiente(recaudo.contrato_id, false);
+  const saldoPendiente = saldo ?? contrato.valor_contrato;
+  const nuevoSaldo = saldoPendiente - nuevoMonto;
+  const diasPagados = Math.floor(nuevoMonto / recaudo.cuota_diaria_pactada);
+  const abono = Math.max(nuevoMonto - (recaudo.cuota_diaria_pactada * diasPagados), 0);
+
+  const updated: RecaudoUpdate = {
+    ...recaudo,
+    monto_recaudado: nuevoMonto,
+    nuevo_saldo: nuevoSaldo,
+    dias_pagados: diasPagados,
+    abono: abono,
+    _sync_status: 'pending',
+  };
+
+  await db.recaudo.put(updated as any);
+
+  await encolar({
+    tabla: 'recaudo',
+    operacion: 'UPDATE',
+    payload: updated,
+    pk_value: String(recaudo._local_id ?? id),
+  });
+
+  await recalcularSaldosContrato(recaudo.contrato_id);
+
+  return updated;
 }
 
 export async function deleteRecaudo(id: number): Promise<void> {

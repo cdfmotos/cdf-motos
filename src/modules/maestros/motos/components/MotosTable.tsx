@@ -13,9 +13,10 @@ interface MotosTableProps {
   onDelete: (moto: Moto) => void;
   onExtracto: (moto: Moto) => void;
   onSync: (moto: Moto) => Promise<boolean>;
+  canEdit?: boolean;
 }
 
-export function MotosTable({ data, loading, onEdit, onDelete, onExtracto, onSync }: MotosTableProps) {
+export function MotosTable({ data, loading, onEdit, onDelete, onExtracto, onSync, canEdit = false }: MotosTableProps) {
   const isOnline = useOnlineStatus();
   const [syncingId, setSyncingId] = useState<number | null>(null);
 
@@ -105,17 +106,17 @@ export function MotosTable({ data, loading, onEdit, onDelete, onExtracto, onSync
               )}
             </button>
           )}
-          <button 
-            onClick={() => onEdit(item)}
-            className="p-1.5 text-primary hover:bg-primary/10 rounded transition-colors"
-            title="Editar Moto"
+          <button
+            onClick={() => canEdit && onEdit(item)}
+            className={`p-1.5 rounded transition-colors ${canEdit ? 'text-primary hover:bg-primary/10' : 'text-slate-300 cursor-not-allowed'}`}
+            title={canEdit ? 'Editar Moto' : 'Solo Admin puede editar'}
           >
             <Edit className="w-4 h-4" />
           </button>
-          <button 
-            onClick={() => onDelete(item)}
-            className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors"
-            title="Eliminar Moto"
+          <button
+            onClick={() => canEdit && onDelete(item)}
+            className={`p-1.5 rounded transition-colors ${canEdit ? 'text-red-500 hover:bg-red-50' : 'text-slate-300 cursor-not-allowed'}`}
+            title={canEdit ? 'Eliminar Moto' : 'Solo Admin puede eliminar'}
           >
             <Trash2 className="w-4 h-4" />
           </button>

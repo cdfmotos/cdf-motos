@@ -8,9 +8,26 @@ import { ExtractoContratoDialog } from './components/ExtractoContratoDialog';
 import { Plus, RefreshCcw, FileSpreadsheet } from 'lucide-react';
 import type { Contrato } from '../../../db/schema';
 import { StatusModal } from './components/StatusModal';
+import { useToast } from '../../../components/ui/Toast/ToastContext';
+import { syncEngine } from '../../../db/sync/syncEngine';
+import { useBlockedDay } from '../../../hooks/useBlockedDay';
+import { useAuthContext } from '../../../contexts/AuthContext';
 
 export function ContratosPage() {
   const { contratos, loading, error, refresh, addContrato, updateContrato, checkContratoActivoMoto } = useContratos();
+  const { addToast } = useToast();
+  const { isAdmin } = useAuthContext();
+  const { canWrite } = useBlockedDay();
+
+  const handleSync = async (id: number) => {
+    const success = await syncEngine.sincronizarItem('contratos', id);
+    if (success) {
+      addToast('Contrato sincronizado correctamente', 'success');
+    } else {
+      addToast('Error al sincronizar el contrato', 'error');
+    }
+    return success;
+  };
   
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
@@ -29,11 +46,19 @@ export function ContratosPage() {
   });
 
   const handleOpenNew = () => {
+    if (!canWrite()) {
+      addToast('El día está cerrado. No se permiten nuevos registros.', 'warning');
+      return;
+    }
     setEditingContrato(null);
     setIsFormOpen(true);
   };
 
   const handleEdit = (contrato: Contrato) => {
+    if (!isAdmin || !canWrite()) {
+      addToast('No tienes permisos para editar.', 'warning');
+      return;
+    }
     setEditingContrato(contrato);
     setIsFormOpen(true);
   };
@@ -53,6 +78,7 @@ export function ContratosPage() {
       if (editingContrato) {
         const res = await updateContrato(editingContrato.id, data);
         if (!res.success) throw new Error(res.error);
+        if ('localSaved' in res && res.localSaved) addToast('Cambios guardados localmente', 'warning');
         setModalStatus({
           isOpen: true,
           type: 'success',
@@ -62,6 +88,7 @@ export function ContratosPage() {
       } else {
         const res = await addContrato(data as Omit<Contrato, 'id' | '_sync_status' | 'created_at'> & { id?: number });
         if (!res.success) throw new Error(res.error);
+        if ('localSaved' in res && res.localSaved) addToast('Contrato guardado localmente', 'warning');
         setModalStatus({
           isOpen: true,
           type: 'success',
@@ -143,6 +170,8 @@ export function ContratosPage() {
         loading={loading} 
         onEdit={handleEdit} 
         onExtracto={handleExtracto}
+        onSync={handleSync}
+        canEdit={isAdmin && canWrite()}
       />
 
       {isFormOpen && (

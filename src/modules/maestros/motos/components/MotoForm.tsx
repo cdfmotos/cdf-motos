@@ -1,16 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save } from 'lucide-react';
+import { X, Save, Wifi, WifiOff } from 'lucide-react';
 import type { Moto } from '../../../../db/schema';
 import { validateMotoForm } from '../utils/motoValidator';
+import { useOnlineStatus } from '../../../../hooks/useOnlineStatus';
+import { useToast } from '../../../../components/ui/Toast';
 
 interface MotoFormProps {
   moto: Moto | null;
   onClose: () => void;
-  onSave: (data: Partial<Omit<Moto, 'id' | '_sync_status' | 'created_at'>>) => Promise<void>;
+  onSave: (data: Partial<Omit<Moto, 'id' | '_sync_status' | 'created_at'>>) => Promise<{ success: boolean; error?: string; localSaved?: boolean }>;
   loading: boolean;
 }
 
 export function MotoForm({ moto, onClose, onSave, loading }: MotoFormProps) {
+  const { isOnline } = useOnlineStatus();
+  const { addToast } = useToast();
   const [formData, setFormData] = useState({
     placa: '',
     marca: '',
@@ -55,21 +59,30 @@ export function MotoForm({ moto, onClose, onSave, loading }: MotoFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const validationErrors = validateMotoForm(formData);
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
     }
-    
-    // Transform data
+
     const submitData = {
       ...formData,
       placa: formData.placa.toUpperCase(),
       anio: formData.anio ? parseInt(formData.anio, 10) : null,
     };
-    
-    await onSave(submitData);
+
+    const result = await onSave(submitData);
+    if (result.success) {
+      if (result.localSaved) {
+        addToast('Moto guardada localmente. Se sincronizará al reconectar.', 'warning');
+      } else {
+        addToast('Moto guardada correctamente', 'success');
+      }
+      onClose();
+    } else {
+      addToast(result.error || 'Error al guardar', 'error');
+    }
   };
 
   const getInputClass = (fieldName: string) => 
@@ -86,12 +99,18 @@ export function MotoForm({ moto, onClose, onSave, loading }: MotoFormProps) {
           <h2 className="text-xl font-semibold text-slate-800">
             {moto ? `Editar Moto: ${moto.placa}` : 'Nueva Moto'}
           </h2>
-          <button 
-            onClick={onClose}
-            className="p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-full transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-3">
+            <span className={`flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-full ${isOnline ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+              {isOnline ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
+              {isOnline ? 'Online' : 'Offline'}
+            </span>
+            <button
+              onClick={onClose}
+              className="p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-full transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         <div className="p-6 overflow-y-auto flex-1">
