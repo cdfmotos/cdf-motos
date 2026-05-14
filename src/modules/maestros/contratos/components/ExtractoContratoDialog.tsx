@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { X, Download, FileText, Wifi, WifiOff } from 'lucide-react';
 import { getExtractoContrato, getExtractoContratoOnline } from '../services/extractoContrato';
 import { descargarPDFExtractoContrato } from '../utils/exportExtracto';

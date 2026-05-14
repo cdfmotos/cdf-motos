@@ -1,5 +1,3 @@
-// src/db/sync/syncEngine.ts
-
 import { db } from '../db';
 import { supabase } from '../../lib/supabase';
 import { marcarExitoso, marcarError } from './syncQueue';
@@ -7,52 +5,77 @@ import { marcarExitoso, marcarError } from './syncQueue';
 import type { SyncQueueItem } from '../schema';
 import type { Database } from '../../types/database.types';
 
-// Máximo de intentos antes de dejar un registro en estado 'error'
+// Máximo de intentos antes de dejar error
 const MAX_INTENTOS = 3;
 
-// Tipo seguro de tablas válidas de Supabase
-type TablaSupabase = keyof Database['public']['Tables'];
+// Tablas válidas de Supabase
+type TablaSupabase =
+  keyof Database['public']['Tables'];
 
 class SyncEngine {
+
   private corriendo = false;
 
   async procesarCola() {
+
     if (this.corriendo) return;
+
     if (!navigator.onLine) return;
 
     this.corriendo = true;
 
-    console.log('[SyncEngine] Iniciando sincronización...');
+    console.log(
+      '[SyncEngine] Iniciando sincronización...'
+    );
 
     try {
+
       const pendientes = await db.sync_queue
         .where('estado')
         .equals('pending')
         .sortBy('timestamp');
 
-      console.log(`[SyncEngine] ${pendientes.length} operaciones pendientes`);
+      console.log(
+        `[SyncEngine] ${pendientes.length} operaciones pendientes`
+      );
 
       for (const item of pendientes) {
+
         if (!navigator.onLine) {
-          console.log('[SyncEngine] Conexión perdida, pausando...');
+
+          console.log(
+            '[SyncEngine] Conexión perdida, pausando...'
+          );
+
           break;
         }
 
         await this.procesarItem(item);
       }
 
-      console.log('[SyncEngine] Sincronización completada');
+      console.log(
+        '[SyncEngine] Sincronización completada'
+      );
 
     } finally {
+
       this.corriendo = false;
     }
   }
 
-  private async procesarItem(item: SyncQueueItem) {
+  private async procesarItem(
+    item: SyncQueueItem
+  ) {
+
     if (!item.id) return;
 
     if (item.intentos >= MAX_INTENTOS) {
-      await marcarError(item.id, `Superó ${MAX_INTENTOS} intentos`);
+
+      await marcarError(
+        item.id,
+        `Superó ${MAX_INTENTOS} intentos`
+      );
+
       return;
     }
 
@@ -61,6 +84,7 @@ class SyncEngine {
     });
 
     try {
+
       await this.ejecutarEnSupabase(item);
 
       await marcarExitoso(item.id);
@@ -68,6 +92,7 @@ class SyncEngine {
       await this.marcarRegistroSincronizado(item);
 
     } catch (error) {
+
       const mensaje =
         error instanceof Error
           ? error.message
@@ -82,12 +107,13 @@ class SyncEngine {
     }
   }
 
-  private async ejecutarEnSupabase(item: SyncQueueItem) {
+  private async ejecutarEnSupabase(
+    item: SyncQueueItem
+  ) {
 
-    // Cast seguro de tabla
-    const tabla = item.tabla as TablaSupabase;
+    const tabla =
+      item.tabla as TablaSupabase;
 
-    // Payload limpio
     const datos = limpiarPayload(
       item.payload as Record<string, unknown>
     );
@@ -98,7 +124,7 @@ class SyncEngine {
 
         const { error } = await supabase
           .from(tabla)
-          .insert(datos as never);
+          .insert(datos as any);
 
         if (error) {
           throw new Error(error.message);
@@ -111,8 +137,11 @@ class SyncEngine {
 
         const { error } = await supabase
           .from(tabla)
-          .update(datos as never)
-          .eq('id', item.pk_value);
+          .update(datos as any)
+          .eq(
+            'id' as never,
+            item.pk_value as never
+          );
 
         if (error) {
           throw new Error(error.message);
@@ -126,7 +155,10 @@ class SyncEngine {
         const { error } = await supabase
           .from(tabla)
           .delete()
-          .eq('id', item.pk_value);
+          .eq(
+            'id' as never,
+            item.pk_value as never
+          );
 
         if (error) {
           throw new Error(error.message);
@@ -154,38 +186,36 @@ class SyncEngine {
     };
 
     const tabla =
-      tablaMap[item.tabla as keyof typeof tablaMap];
+      tablaMap[
+      item.tabla as keyof typeof tablaMap
+      ];
 
     if (!tabla) return;
 
-    if (item.tabla === 'estado_sistema') {
+    const pk =
+      item.tabla === 'estado_sistema'
+        ? item.pk_value
+        : Number(item.pk_value);
 
-      await tabla.update(item.pk_value, {
-        _sync_status: 'synced',
-      });
-
-    } else {
-
-      await tabla.update(Number(item.pk_value), {
-        _sync_status: 'synced',
-      });
-    }
+    await tabla.update(pk as any, {
+      _sync_status: 'synced',
+    });
   }
 }
 
-// Elimina campos internos de Dexie
+// Elimina campos internos Dexie
 function limpiarPayload(
   payload: Record<string, unknown>
 ) {
 
-  const {
-    _sync_status,
-    _local_id,
-    id,
-    ...datos
-  } = payload;
+  const datos = { ...payload };
+
+  delete datos._sync_status;
+  delete datos._local_id;
+  delete datos.id;
 
   return datos;
 }
 
-export const syncEngine = new SyncEngine();
+export const syncEngine =
+  new SyncEngine();

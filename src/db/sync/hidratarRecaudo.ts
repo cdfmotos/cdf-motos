@@ -1,29 +1,57 @@
 import { supabase } from '../../lib/supabase';
 import { db } from '../db';
+import type { Recaudo } from '../schema';
+
 // Cuántos días hacia atrás cargar en Dexie
 const DIAS_RECAUDO_LOCAL = 90;
 
+// Extensión local para Dexie
+type RecaudoLocal = Recaudo & {
+  _sync_status: 'synced' | 'pending';
+};
+
 export async function hidratarRecaudo() {
   const fechaDesde = new Date();
-  fechaDesde.setDate(fechaDesde.getDate() - DIAS_RECAUDO_LOCAL);
-  const fechaStr = fechaDesde.toISOString().split('T')[0];
+
+  fechaDesde.setDate(
+    fechaDesde.getDate() - DIAS_RECAUDO_LOCAL
+  );
+
+  const fechaStr = fechaDesde
+    .toISOString()
+    .split('T')[0];
 
   const { data, error } = await supabase
-    .from('recaudo' as any)
+    .from('recaudo')
     .select('*')
-    .gte('fecha_recaudo', fechaStr)   // solo últimos 90 días
-    .order('fecha_recaudo', { ascending: false });
+    .gte('fecha_recaudo', fechaStr)
+    .order('fecha_recaudo', {
+      ascending: false
+    })
+    .returns<Recaudo[]>();
 
   if (error) {
-    console.error('[Hydrate] Error cargando recaudo:', error.message);
+    console.error(
+      '[Hydrate] Error cargando recaudo:',
+      error.message
+    );
     return;
   }
 
-  if (!data || data.length === 0) return;
+  if (!data || data.length === 0) {
+    return;
+  }
 
-  await db.recaudo.bulkPut(
-    data.map(row => ({ ...row, _sync_status: 'synced' as const })) as any
+  const recaudos: RecaudoLocal[] = data.map(
+    (row: Recaudo) => ({
+      ...row,
+      _sync_status: 'synced'
+    })
   );
 
-  console.log(`[Hydrate] recaudo: ${data.length} registros (últimos ${DIAS_RECAUDO_LOCAL} días)`);
+  await db.recaudo.bulkPut(recaudos);
+
+  console.log(
+    `[Hydrate] recaudo: ${data.length} registros (últimos ${DIAS_RECAUDO_LOCAL} días)`
+  );
 }

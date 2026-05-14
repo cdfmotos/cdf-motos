@@ -62,8 +62,6 @@ export function AsistenciaTab() {
   const asistenciaMotos = data?.asistencia_motos ?? 0;
   const asistenciaPrestamos = data?.asistencia_prestamos ?? 0;
   const contratosSinAsistencia = data?.contratos_sin_asistencia ?? 0;
-  const motosSinAsistencia = data?.motos_sin_asistencia ?? 0;
-  const prestamosSinAsistencia = data?.prestamos_sin_asistencia ?? 0;
   const motosEsperadas = data?.motos_esperadas ?? 0;
   const prestamosEsperados = data?.prestamos_esperados ?? 0;
   const totalEsperados = data?.total_esperados ?? 0;

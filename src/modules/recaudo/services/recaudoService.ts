@@ -1,7 +1,7 @@
 import { db } from '../../../db/db';
 import { encolar } from '../../../db/sync/syncQueue';
 import { supabase } from '../../../lib/supabase';
-import type { Recaudo, Contrato, Cliente } from '../../../db/schema';
+import type { Recaudo,  Cliente } from '../../../db/schema';
 
 export interface ContratoWithCliente {
   id: number;
@@ -105,7 +105,7 @@ export async function createRecaudo(input: RecaudoInput): Promise<Recaudo> {
   const contrato = await db.contratos.get(input.contrato_id);
   if (!contrato) throw new Error('Contrato no encontrado');
 
-  const { saldo, sinDatosRecientes } = await getSaldoPendiente(input.contrato_id, false);
+  const { saldo } = await getSaldoPendiente(input.contrato_id, false);
   
   const saldoPendiente = saldo ?? contrato.valor_contrato;
   const monto = input.monto_recaudado;

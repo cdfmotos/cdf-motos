@@ -11,9 +11,8 @@
  */
 
 import { supabase } from '../../../../lib/supabase';
-import type { Database } from '../../../../types/database.types';
 
-type ViewExtractoContratoRow = Database['public']['Views']['view_extracto_contrato']['Row'];
+
 export async function getExtractoContrato(db: any, contratoId: number | string) {
 
   // DEBUG ─────────────────────────────────────────────

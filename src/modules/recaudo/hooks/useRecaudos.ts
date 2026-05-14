@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { getRecaudos, createRecaudo, deleteRecaudo, getContratoById, type RecaudoInput, type ContratoWithCliente } from '../services/recaudoService';
 import { useOnlineStatus } from '../../../hooks/useOnlineStatus';
+import type { Recaudo } from '../../../db/schema';
 
 export interface RecaudoFilters {
   contratoId: string;

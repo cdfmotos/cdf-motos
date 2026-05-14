@@ -29,12 +29,11 @@ export function IndicadoresPage() {
         {TABS.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => tab.component && setActiveTab(tab.id)}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
-              activeTab === tab.id
+            onClick={() => setActiveTab(tab.id)}
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${activeTab === tab.id
                 ? 'border-primary text-primary'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
-            }`}
+              }`}
           >
             {tab.label}
           </button>
