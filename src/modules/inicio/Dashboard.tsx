@@ -13,7 +13,21 @@ import {
 import { formatCurrency } from '../../utils/formatters';
 
 export function Dashboard() {
-  const { actividades, indicadores, loading, error } = useInicioData();
+  const { actividades, indicadores, loading, error, isHydrating } = useInicioData();
+
+  if (isHydrating) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <div className="relative">
+          <div className="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+        </div>
+        <div className="text-center">
+          <p className="text-lg font-semibold text-slate-700">Alimentando base de datos local...</p>
+          <p className="text-sm text-slate-500 mt-1">Esto puede tomar unos segundos</p>
+        </div>
+      </div>
+    );
+  }
 
   if (error) {
     return (

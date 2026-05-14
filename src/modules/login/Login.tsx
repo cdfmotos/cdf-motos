@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, UserPlus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
+import { RecuperarContrasenaModal } from './components/RecuperarContrasenaModal';
+import { RegistroModal } from './components/RegistroModal';
 
 export function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isRecuperarOpen, setIsRecuperarOpen] = useState(false);
+  const [isRegistroOpen, setIsRegistroOpen] = useState(false);
   const navigate = useNavigate();
   const { login, loading, error } = useAuth();
 
@@ -89,9 +93,13 @@ export function Login() {
                 </button>
               </div>
               <div className="flex justify-end mt-2">
-                <a href="#" className="text-sm text-primary hover:text-primary/80 font-medium transition-colors">
+                <button
+                  type="button"
+                  onClick={() => setIsRecuperarOpen(true)}
+                  className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
+                >
                   ¿Olvidaste tu contraseña?
-                </a>
+                </button>
               </div>
             </div>
 
@@ -103,12 +111,35 @@ export function Login() {
               {loading ? 'Ingresando...' : 'Ingresar'}
             </button>
           </form>
+
+          <div className="mt-4 text-center">
+            <button
+              type="button"
+              onClick={() => setIsRegistroOpen(true)}
+              className="flex items-center gap-2 mx-auto text-sm text-slate-500 hover:text-primary transition-colors"
+            >
+              <UserPlus className="w-4 h-4" />
+              Regístrate
+            </button>
+          </div>
         </div>
         
         <div className="mt-8 text-center text-sm text-slate-500">
           &copy; {new Date().getFullYear()} CDF Motos. Todos los derechos reservados.
         </div>
       </div>
+
+      <RecuperarContrasenaModal
+        open={isRecuperarOpen}
+        onClose={() => setIsRecuperarOpen(false)}
+        onOpenRegistro={() => setIsRegistroOpen(true)}
+      />
+
+      <RegistroModal
+        open={isRegistroOpen}
+        onClose={() => setIsRegistroOpen(false)}
+        onOpenLogin={() => setIsRecuperarOpen(true)}
+      />
     </div>
   );
 }
