@@ -28,12 +28,12 @@ export function ControlDiarioTable({ data, loading }: ControlDiarioTableProps) {
     {
       header: 'Saldo Pendiente',
       accessorKey: 'saldo_pendiente',
-      cell: (item) => formatCurrency(item.saldo_pendiente)
+      cell: (item) => formatCurrency(item.saldo_pendiente ?? 0)
     },
     {
       header: 'Nuevo Saldo',
       accessorKey: 'nuevo_saldo',
-      cell: (item) => formatCurrency(item.nuevo_saldo)
+      cell: (item) => formatCurrency(item.nuevo_saldo ?? 0)
     },
     {
       header: 'Tipo',

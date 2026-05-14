@@ -1,10 +1,10 @@
 import { db } from '../../../db/db';
 import { encolar } from '../../../db/sync/syncQueue';
 import { supabase } from '../../../lib/supabase';
-import type { Recaudo,  Cliente } from '../../../db/schema';
+import type { Recaudo, Cliente } from '../../../db/schema';
 
 export interface ContratoWithCliente {
-  id: number;
+  id?: number;
   placa: string | null;
   valor_contrato: number;
   cuota_diaria: number;
@@ -68,7 +68,7 @@ export async function getSaldoPendiente(contratoId: number, isOnline: boolean): 
         .select('saldo_pendiente')
         .eq('id', contratoId)
         .single();
-      
+
       if (error || !data) return { saldo: null, sinDatosRecientes: true };
       return { saldo: data.saldo_pendiente ?? null, sinDatosRecientes: false };
     } catch {
@@ -79,7 +79,7 @@ export async function getSaldoPendiente(contratoId: number, isOnline: boolean): 
   const ultimoRecaudo = await db.recaudo
     .where('contrato_id')
     .equals(contratoId)
-    .and(r => r.fecha_recaudo && r.nuevo_saldo != null)
+    .and(r => !!r.fecha_recaudo && r.nuevo_saldo != null)
     .sortBy('fecha_recaudo');
 
   if (ultimoRecaudo.length > 0) {
@@ -106,7 +106,7 @@ export async function createRecaudo(input: RecaudoInput): Promise<Recaudo> {
   if (!contrato) throw new Error('Contrato no encontrado');
 
   const { saldo } = await getSaldoPendiente(input.contrato_id, false);
-  
+
   const saldoPendiente = saldo ?? contrato.valor_contrato;
   const monto = input.monto_recaudado;
   const cuota = input.cuota_diaria_pactada;
@@ -150,7 +150,7 @@ export async function recalcularSaldosContrato(contratoId: number): Promise<void
   if (!contrato) return;
 
   const valorContrato = contrato.valor_contrato;
-  
+
   const recaudos = await db.recaudo
     .where('contrato_id')
     .equals(contratoId)
@@ -161,7 +161,7 @@ export async function recalcularSaldosContrato(contratoId: number): Promise<void
   const updates = await Promise.all(recaudos.map(async (r) => {
     const monto = r.monto_recaudado;
     const cuota = r.cuota_diaria_pactada;
-    
+
     const saldoPendiente = valorContrato - saldoAcumulado;
     const nuevoSaldo = Math.max(saldoPendiente - monto, 0);
     const diasPagados = Math.floor(monto / cuota);

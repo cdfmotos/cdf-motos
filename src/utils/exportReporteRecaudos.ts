@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
-import type { Database } from '../../types/database.types';
+import type { Database } from '../types/database.types';
 
 type VistaReportePendientes = Database['public']['Views']['vista_reporte_pendientes']['Row'];
 

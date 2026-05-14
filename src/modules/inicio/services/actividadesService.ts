@@ -23,7 +23,7 @@ export async function getActividadesRecientes(): Promise<ActividadReciente[]> {
     .filter(c =>
       c.estado !== null &&
       c.estado !== undefined &&
-      c.created_at !== undefined &&
+      c.created_at != null &&
       c.created_at.slice(0, 10) >= fechaLimite
     )
     .toArray();
@@ -37,24 +37,24 @@ export async function getActividadesRecientes(): Promise<ActividadReciente[]> {
   ]);
 
   // Indexar para lookup O(1) en vez de find() anidado
-  const usersMap   = new Map(users.map(u   => [u.id,     u]));
+  const usersMap = new Map(users.map(u => [u.id, u]));
   const clienteMap = new Map(clientes.map(cl => [cl.cedula, cl]));
 
   // Construir resultado — equivalente al SELECT con LEFT JOINs
   const resultado: ActividadReciente[] = contratos.map(c => {
-    const user    = c.usuario_id    ? usersMap.get(c.usuario_id)       : undefined;
+    const user = c.usuario_id ? usersMap.get(c.usuario_id) : undefined;
     const cliente = c.cliente_cedula ? clienteMap.get(c.cliente_cedula) : undefined;
 
     return {
-      fecha:           c.created_at?.slice(0, 10) ?? '',
+      fecha: c.created_at?.slice(0, 10) ?? '',
       numero_contrato: c.id,
-      placa:           c.placa ?? null,
-      tipo_servicio:   c.tipo_contrato,
-      personaacargo:   user?.nombre_completo ?? null,
-      usuarioiddebug:  c.usuario_id ?? null,
-      cliente:         cliente
-                         ? `${cliente.nombres} ${cliente.apellidos}`
-                         : 'Sin cliente',
+      placa: c.placa ?? null,
+      tipo_servicio: c.tipo_contrato,
+      personaacargo: user?.nombre_completo ?? null,
+      usuarioiddebug: c.usuario_id ?? null,
+      cliente: cliente
+        ? `${cliente.nombres} ${cliente.apellidos}`
+        : 'Sin cliente',
       estado_contrato: c.estado ?? null,
     };
   });

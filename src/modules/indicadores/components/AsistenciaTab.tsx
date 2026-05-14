@@ -68,22 +68,25 @@ export function AsistenciaTab() {
 
   const fechaLimiteStr = toYMD(new Date(Date.now() - 15 * 24 * 60 * 60 * 1000));
 
-  const chartDataFiltered = historico
-    .filter((h) => {
-      if (!h.fecha) return false;
-      const fechaStr = typeof h.fecha === 'string' ? h.fecha : h.fecha.split('T')[0];
-      if (fechaGrafico) return fechaStr === fechaGrafico;
-      return fechaStr >= fechaLimiteStr;
-    })
-    .map((h) => ({
-      fecha: typeof h.fecha === 'string' 
-        ? h.fecha.slice(5) 
-        : (h.fecha as string)?.slice(5) || '-',
-      'Asist. Motos': h.asistencia_motos ?? 0,
-      'Motos Esp.': h.motos_esperadas ?? 0,
-      'Asist. Préstamos': h.asistencia_prestamos ?? 0,
-      'Préstamos Esp.': h.prestamos_esperados ?? 0,
-    }));
+const chartDataFiltered = historico
+  .filter((h) => {
+    if (!h.fecha) return false;
+
+    const fechaStr = h.fecha.split('T')[0];
+
+    if (fechaGrafico) {
+      return fechaStr === fechaGrafico;
+    }
+
+    return fechaStr >= fechaLimiteStr;
+  })
+  .map((h) => ({
+    fecha: h.fecha ? h.fecha.slice(5) : '-',
+    'Asist. Motos': h.asistencia_motos ?? 0,
+    'Motos Esp.': h.motos_esperadas ?? 0,
+    'Asist. Préstamos': h.asistencia_prestamos ?? 0,
+    'Préstamos Esp.': h.prestamos_esperados ?? 0,
+  }));
 
   const handleLimpiarFiltro = () => setFechaGrafico(null);
 
