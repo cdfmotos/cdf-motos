@@ -1,8 +1,8 @@
-import React from 'react';
+
 import { DataTable } from '../../../components/ui/DataTable';
 import type { Column } from '../../../components/ui/DataTable/types/types';
 import type { Recaudo } from '../../../db/schema';
-import { formatCurrency, formatDate } from '../../../utils/formatters';
+import { formatCurrency} from '../../../utils/formatters';
 
 interface ControlDiarioTableProps {
   data: Recaudo[];

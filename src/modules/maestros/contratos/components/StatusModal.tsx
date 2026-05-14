@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { AlertCircle, CheckCircle2, X } from 'lucide-react';
 
 interface StatusModalProps {

@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { DataTable } from '../../../../components/ui/DataTable';
 import type { Column } from '../../../../components/ui/DataTable/types/types';
 import type { GPS } from '../../../../db/schema';

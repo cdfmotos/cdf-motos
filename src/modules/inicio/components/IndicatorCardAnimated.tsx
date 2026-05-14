@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { IndicatorCard } from '../../../components/ui/IndicatorCard';
 import type { LucideIcon } from 'lucide-react';
 

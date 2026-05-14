@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { useInicioData } from './hooks/useInicioData';
 import { IndicatorCardAnimated } from './components/IndicatorCardAnimated';
 import { LatestContractsTable } from './components/LatestContractsTable';

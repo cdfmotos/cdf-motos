@@ -1,4 +1,4 @@
-import React from 'react';
+
 import type { RecaudoFilters } from '../hooks/useRecaudos';
 
 interface RecaudosFilterProps {
