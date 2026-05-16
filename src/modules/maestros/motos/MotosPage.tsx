@@ -82,12 +82,12 @@ export function MotosPage() {
 
   return (
     <div className="flex flex-col min-h-full">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+      <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Maestro de Motos</h1>
           <p className="text-sm text-slate-500">Gestión del parque automotor y sus detalles</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button 
             onClick={reload}
             className="flex items-center gap-2 px-3 py-2 border border-border text-slate-600 bg-white rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium"

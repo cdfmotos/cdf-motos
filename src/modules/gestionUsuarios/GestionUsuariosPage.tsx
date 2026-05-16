@@ -10,7 +10,7 @@ import type { Column } from '../../components/ui/DataTable/types/types';
 type User = Database['public']['Tables']['users']['Row'];
 
 export function GestionUsuariosPage() {
-  const isOnline = useOnlineStatus();
+  const { isOnline } = useOnlineStatus();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,19 +20,29 @@ export function GestionUsuariosPage() {
     if (!isOnline) return;
 
     const fetchUsers = async () => {
-      setLoading(true);
-      setError(null);
+      try {
+        console.log('iniciando fetch');
 
-      const { data, error: err } = await supabase
-        .from('users')
-        .select('*')
-        .order('nombre_completo', { ascending: true });
+        setLoading(true);
+        setError(null);
 
-      setLoading(false);
-      if (err) {
-        setError(err.message);
-      } else {
-        setUsers(data || []);
+        const { data, error: err } = await supabase
+          .from('users')
+          .select('*')
+          .order('nombre_completo', { ascending: true });
+
+        console.log('respuesta supabase', { data, err });
+
+        if (err) {
+          setError(err.message);
+        } else {
+          setUsers(data || []);
+        }
+      } catch (e) {
+        console.error(e);
+        setError('Error inesperado');
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -56,8 +66,8 @@ export function GestionUsuariosPage() {
     { header: 'Email', accessorKey: 'email' },
     { header: 'Cédula', accessorKey: 'cedula' },
     { header: 'Rol', accessorKey: 'rol' },
-    { 
-      header: 'Estado', 
+    {
+      header: 'Estado',
       accessorKey: 'estado',
       cell: (user) => user.estado ? (
         <span className="inline-flex items-center gap-1 text-green-600">

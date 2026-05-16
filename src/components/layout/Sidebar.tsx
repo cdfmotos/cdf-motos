@@ -111,50 +111,50 @@ export function Sidebar({ onOpenCambioEstado, onOpenReporteRecaudos }: SidebarPr
     ];
 
     if (isAdmin || isCajero) {
-      NAV_ITEMS.push({
-        title: 'Maestros',
-        icon: <Database className="w-5 h-5" />,
-        children: [
-          { title: 'Maestro Motos', path: '/maestros/motos', icon: <Bike className="w-4 h-4" /> },
-          { title: 'Maestro SOAT', path: '/maestros/soat', icon: <ShieldCheck className="w-4 h-4" /> },
-          { title: 'Maestro GPS', path: '/maestros/gps', icon: <MapPin className="w-4 h-4" /> },
-          { title: 'Maestro Clientes', path: '/maestros/clientes', icon: <Users className="w-4 h-4" /> },
-          { title: 'Maestro Contratos', path: '/maestros/contratos', icon: <FileText className="w-4 h-4" /> },
-        ]
-      });
+        NAV_ITEMS.push({
+            title: 'Maestros',
+            icon: <Database className="w-5 h-5" />,
+            children: [
+                { title: 'Maestro Motos', path: '/maestros/motos', icon: <Bike className="w-4 h-4" /> },
+                { title: 'Maestro SOAT', path: '/maestros/soat', icon: <ShieldCheck className="w-4 h-4" /> },
+                { title: 'Maestro GPS', path: '/maestros/gps', icon: <MapPin className="w-4 h-4" /> },
+                { title: 'Maestro Clientes', path: '/maestros/clientes', icon: <Users className="w-4 h-4" /> },
+                { title: 'Maestro Contratos', path: '/maestros/contratos', icon: <FileText className="w-4 h-4" /> },
+            ]
+        });
     }
 
     NAV_ITEMS.push(
-      { title: 'Control Diario', path: '/control-diario', icon: <Activity className="w-5 h-5" /> }
+        { title: 'Control Diario', path: '/control-diario', icon: <Activity className="w-5 h-5" /> }
     );
 
     if (isAdmin || isCajero) {
-      NAV_ITEMS.push(
-        { title: 'Recaudos', path: '/recaudo', icon: <Wallet className="w-5 h-5" /> },
-        { title: 'Mis Recaudos', path: '/mis-recaudos', icon: <CreditCard className="w-5 h-5" /> },
-        { title: 'Gastos', path: '/gastos', icon: <Receipt className="w-5 h-5" /> },
-      );
+        NAV_ITEMS.push(
+            { title: 'Recaudos', path: '/recaudo', icon: <Wallet className="w-5 h-5" /> },
+            { title: 'Mis Recaudos', path: '/mis-recaudos', icon: <CreditCard className="w-5 h-5" /> },
+            { title: 'Gastos', path: '/gastos', icon: <Receipt className="w-5 h-5" /> },
+        );
     }
 
     NAV_ITEMS.push({ title: 'Indicadores', path: '/indicadores', icon: <LineChart className="w-5 h-5" /> });
 
     if ((isAdmin || isCajero) && isOnline) {
-      NAV_ITEMS.push({
-        title: 'Generar Reporte',
-        icon: <FileText className="w-5 h-5" />,
-        children: [
-          { title: 'Reporte de Contrato', onClick: onOpenCambioEstado, icon: <FileText className="w-4 h-4" /> },
-          { title: 'Reporte de Recaudos', onClick: onOpenReporteRecaudos, icon: <FileText className="w-4 h-4" /> },
-        ]
-      });
+        NAV_ITEMS.push({
+            title: 'Generar Reporte',
+            icon: <FileText className="w-5 h-5" />,
+            children: [
+                { title: 'Reporte de Contrato', onClick: onOpenCambioEstado, icon: <FileText className="w-4 h-4" /> },
+                { title: 'Reporte de Recaudos', onClick: onOpenReporteRecaudos, icon: <FileText className="w-4 h-4" /> },
+            ]
+        });
     }
 
     if (isAdmin) {
-      NAV_ITEMS.push({ title: 'Gestión de Usuarios', path: '/usuarios', icon: <Users className="w-5 h-5" /> });
+        NAV_ITEMS.push({ title: 'Gestión de Usuarios', path: '/usuarios', icon: <Users className="w-5 h-5" /> });
     }
 
     if (isAdmin || isCajero) {
-      NAV_ITEMS.push({ title: 'Configuración', path: '/configuracion', icon: <Settings className="w-5 h-5" /> });
+        NAV_ITEMS.push({ title: 'Configuración', path: '/configuracion', icon: <Settings className="w-5 h-5" /> });
     }
 
     return (
@@ -182,8 +182,8 @@ export function Sidebar({ onOpenCambioEstado, onOpenReporteRecaudos }: SidebarPr
 
             {/* Sidebar Container */}
             <aside className={`
-        fixed lg:static inset-y-0 left-0 z-50
-        w-64 bg-primary text-white shadow-xl flex flex-col h-screen
+  fixed lg:sticky lg:top-0 inset-y-0 left-0 z-50
+  w-64 bg-primary text-white shadow-xl flex flex-col min-h-screen
         transition-transform duration-300 ease-in-out
         ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
@@ -262,9 +262,9 @@ export function Sidebar({ onOpenCambioEstado, onOpenReporteRecaudos }: SidebarPr
                 {/* Footer Area (User & Settings) */}
                 <div className="p-4 border-t border-white/10 space-y-2">
                     <div className="flex items-center justify-between px-2 mb-4">
-                        <button 
+                        <button
                             onClick={() => setNotificacionesOpen(true)}
-                            className="p-2 rounded-full hover:bg-white/10 relative transition-colors" 
+                            className="p-2 rounded-full hover:bg-white/10 relative transition-colors"
                             title="Notificaciones"
                         >
                             <Bell className="w-5 h-5" />
@@ -272,9 +272,9 @@ export function Sidebar({ onOpenCambioEstado, onOpenReporteRecaudos }: SidebarPr
                                 <span className="absolute top-1.5 right-1.5 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-primary"></span>
                             )}
                         </button>
-                        <button 
+                        <button
                             onClick={handleOpenPerfil}
-                            className="p-2 rounded-full hover:bg-white/10 transition-colors" 
+                            className="p-2 rounded-full hover:bg-white/10 transition-colors"
                             title="Mi Perfil"
                         >
                             <UserCircle className="w-5 h-5" />
@@ -284,7 +284,7 @@ export function Sidebar({ onOpenCambioEstado, onOpenReporteRecaudos }: SidebarPr
                         </NavLink>
                     </div>
 
-                    <button 
+                    <button
                         onClick={handleLogout}
                         className="flex items-center w-full px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-red-500/20 text-red-200 transition-colors"
                     >
@@ -294,13 +294,13 @@ export function Sidebar({ onOpenCambioEstado, onOpenReporteRecaudos }: SidebarPr
                 </div>
             </aside>
             {/* Notificaciones Modal */}
-            <NotificacionesModal 
-                open={isNotificacionesOpen} 
-                onClose={() => setNotificacionesOpen(false)} 
+            <NotificacionesModal
+                open={isNotificacionesOpen}
+                onClose={() => setNotificacionesOpen(false)}
             />
-            <PerfilModal 
-                open={isPerfilOpen} 
-                onClose={() => setPerfilOpen(false)} 
+            <PerfilModal
+                open={isPerfilOpen}
+                onClose={() => setPerfilOpen(false)}
             />
         </>
     );
