@@ -48,22 +48,29 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
 
 export function AsistenciaTab() {
   const isOnline = useOnlineStatus();
-  
+
   const today = toYMD(new Date());
   const quinceDiasAtras = new Date();
   quinceDiasAtras.setDate(quinceDiasAtras.getDate() - 15);
-  
+
   const [fechaDesde, setFechaDesde] = useState(toYMD(quinceDiasAtras));
   const [fechaHasta, setFechaHasta] = useState(today);
-  
+
   const { data, loading, error } = useVistaAsistenciaResumen(fechaDesde, fechaHasta);
   const { data: historico, loading: loadingHistorico } = useVistaAsistenciaHistorica(fechaDesde, fechaHasta);
 
   if (!isOnline) return <OfflineMessage />;
 
-  const calcularSuma = (key: keyof typeof data[0]) => {
+  type AsistenciaItem = NonNullable<typeof data>[number];
+
+  const calcularSuma = (key: keyof AsistenciaItem) => {
     if (!data || data.length === 0) return 0;
-    return data.reduce((acc, curr) => acc + (Number(curr[key]) || 0), 0);
+
+    return data.reduce((acc, curr) => {
+      const value = curr[key];
+
+      return acc + (typeof value === 'number' ? value : Number(value) || 0);
+    }, 0);
   };
 
   const asistenciaContratos = calcularSuma('asistencia_contratos');
