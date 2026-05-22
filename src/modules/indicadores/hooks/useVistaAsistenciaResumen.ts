@@ -4,29 +4,30 @@ import type { Database } from '../../../types/database.types';
 
 type VistaAsistenciaResumen = Database['public']['Views']['vista_asistencia_resumen_v2']['Row'];
 
-export function useVistaAsistenciaResumen(fecha: string) {
-  const [data, setData] = useState<VistaAsistenciaResumen | null>(null);
+export function useVistaAsistenciaResumen(fechaDesde: string, fechaHasta: string) {
+  const [data, setData] = useState<VistaAsistenciaResumen[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!fecha) return;
+    if (!fechaDesde || !fechaHasta) return;
 
     const fetchData = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        const { data: row, error: err } = await supabase
+        const { data: rows, error: err } = await supabase
           .from('vista_asistencia_resumen_v2')
           .select('*')
-          .eq('fecha', fecha)
-          .maybeSingle();
+          .gte('fecha', fechaDesde)
+          .lte('fecha', fechaHasta)
+          .order('fecha', { ascending: true });
 
         if (err) {
           setError(err.message);
         } else {
-          setData(row);
+          setData(rows);
         }
       } finally {
         setLoading(false);
@@ -34,7 +35,7 @@ export function useVistaAsistenciaResumen(fecha: string) {
     };
 
     fetchData();
-  }, [fecha]);
+  }, [fechaDesde, fechaHasta]);
 
   return { data, loading, error };
 }

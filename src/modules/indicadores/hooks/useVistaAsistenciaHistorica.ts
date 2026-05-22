@@ -4,12 +4,14 @@ import type { Database } from '../../../types/database.types';
 
 type VistaAsistenciaHistorica = Database['public']['Views']['vista_asistencia_historica_v2']['Row'];
 
-export function useVistaAsistenciaHistorica() {
+export function useVistaAsistenciaHistorica(fechaDesde: string, fechaHasta: string) {
   const [data, setData] = useState<VistaAsistenciaHistorica[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!fechaDesde || !fechaHasta) return;
+
     const fetchData = async () => {
       try {
         setLoading(true);
@@ -18,7 +20,9 @@ export function useVistaAsistenciaHistorica() {
         const { data: rows, error: err } = await supabase
           .from('vista_asistencia_historica_v2')
           .select('*')
-          .order('fecha', { ascending: false });
+          .gte('fecha', fechaDesde)
+          .lte('fecha', fechaHasta)
+          .order('fecha', { ascending: true });
 
         if (err) {
           setError(err.message);
@@ -31,7 +35,7 @@ export function useVistaAsistenciaHistorica() {
     };
 
     fetchData();
-  }, []);
+  }, [fechaDesde, fechaHasta]);
 
   return { data, loading, error };
 }

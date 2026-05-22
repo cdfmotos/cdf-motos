@@ -4,6 +4,7 @@ import { ResumenDiarioTab } from './components/ResumenDiarioTab';
 import { IndicadorMensualTab } from './components/IndicadorMensualTab';
 import { AsistenciaTab } from './components/AsistenciaTab';
 import { EstadoContratosTab } from './components/EstadoContratosTab';
+import { ContratosAbonadosTab } from './components/ContratosAbonadosTab';
 
 const TABS = [
   { id: 'control-diario', label: 'Control Diario', component: ControlDiarioTab },
@@ -11,6 +12,7 @@ const TABS = [
   { id: 'indicador-mensual', label: 'Indicador Mensual', component: IndicadorMensualTab },
   { id: 'indicador-asistencia', label: 'Indicador Asistencia', component: AsistenciaTab },
   { id: 'estado-contratos', label: 'Estado Contratos', component: EstadoContratosTab },
+  { id: 'contratos-abonados', label: 'Contratos Abonados', component: ContratosAbonadosTab },
 ];
 
 export function IndicadoresPage() {

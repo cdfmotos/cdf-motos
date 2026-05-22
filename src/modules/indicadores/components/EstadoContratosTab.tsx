@@ -52,43 +52,46 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
 
 export function EstadoContratosTab() {
   const isOnline = useOnlineStatus();
-  const [fecha, setFecha] = useState(toYMD(new Date()));
-  const [fechaGrafico, setFechaGrafico] = useState<string | null>(null);
-  const { data, loading, error } = useHistoricoEstadoContratos();
+  
+  const today = toYMD(new Date());
+  const quinceDiasAtras = new Date();
+  quinceDiasAtras.setDate(quinceDiasAtras.getDate() - 15);
+  
+  const [fechaDesde, setFechaDesde] = useState(toYMD(quinceDiasAtras));
+  const [fechaHasta, setFechaHasta] = useState(today);
+  
+  const { data, loading, error } = useHistoricoEstadoContratos(fechaDesde, fechaHasta);
 
   if (!isOnline) return <OfflineMessage />;
 
-  const registro = data.find((d) => d.fecha === fecha);
-  const totalContratos = registro?.total_contratos ?? 0;
-  const activo = registro?.activo ?? 0;
-  const bodega = registro?.bodega ?? 0;
-  const fiscalia = registro?.fiscalia ?? 0;
-  const liquidado = registro?.liquidado ?? 0;
-  const paradenuncio = registro?.paradenuncio ?? 0;
-  const robada = registro?.robada ?? 0;
-  const termino = registro?.termino ?? 0;
+  // Calculamos los KPIs basándonos en la acumulación o el promedio del rango consultado
+  // o según el último día del rango consultado (ya que los contratos son estados diarios).
+  // Si filtramos por un rango, las KPIs mostrarán el estado promedio del rango
+  const calcularPromedio = (key: keyof typeof data[0]) => {
+    if (data.length === 0) return 0;
+    const sum = data.reduce((acc, curr) => acc + (Number(curr[key]) || 0), 0);
+    return Math.round(sum / data.length);
+  };
 
-  const fechaLimiteStr = toYMD(new Date(Date.now() - 15 * 24 * 60 * 60 * 1000));
+  const totalContratos = calcularPromedio('total_contratos');
+  const activo = calcularPromedio('activo');
+  const bodega = calcularPromedio('bodega');
+  const fiscalia = calcularPromedio('fiscalia');
+  const liquidado = calcularPromedio('liquidado');
+  const paradenuncio = calcularPromedio('paradenuncio');
+  const robada = calcularPromedio('robada');
+  const termino = calcularPromedio('termino');
 
-  const chartDataFiltered = data
-    .filter((d) => {
-      if (!d.fecha) return false;
-      const fechaStr = d.fecha;
-      if (fechaGrafico) return fechaStr === fechaGrafico;
-      return fechaStr >= fechaLimiteStr;
-    })
-    .map((d) => ({
-      fecha: d.fecha?.slice(5) || '-',
-      'Activo': d.activo ?? 0,
-      'Bodega': d.bodega ?? 0,
-      'Fiscalía': d.fiscalia ?? 0,
-      'Liquidado': d.liquidado ?? 0,
-      'Para Denuncio': d.paradenuncio ?? 0,
-      'Robada': d.robada ?? 0,
-      'Término': d.termino ?? 0,
-    }));
-
-  const handleLimpiarFiltro = () => setFechaGrafico(null);
+  const chartDataFiltered = data.map((d) => ({
+    fecha: d.fecha?.slice(5) || '-',
+    'Activo': d.activo ?? 0,
+    'Bodega': d.bodega ?? 0,
+    'Fiscalía': d.fiscalia ?? 0,
+    'Liquidado': d.liquidado ?? 0,
+    'Para Denuncio': d.paradenuncio ?? 0,
+    'Robada': d.robada ?? 0,
+    'Término': d.termino ?? 0,
+  }));
 
   const kpis = [
     { label: 'Total Contratos', value: totalContratos, highlight: true },
@@ -106,12 +109,21 @@ export function EstadoContratosTab() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <div className="flex items-center gap-2">
           <Calendar className="w-5 h-5 text-slate-500" />
-          <input
-            type="date"
-            value={fecha}
-            onChange={(e) => setFecha(e.target.value)}
-            className="border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-          />
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={fechaDesde}
+              onChange={(e) => setFechaDesde(e.target.value)}
+              className="border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+            />
+            <span className="text-slate-500">a</span>
+            <input
+              type="date"
+              value={fechaHasta}
+              onChange={(e) => setFechaHasta(e.target.value)}
+              className="border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+            />
+          </div>
         </div>
       </div>
 
@@ -123,9 +135,9 @@ export function EstadoContratosTab() {
 
       {loading ? (
         <div className="flex justify-center py-12 text-slate-500">Cargando...</div>
-      ) : !registro && data.length > 0 ? (
+      ) : data.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-48 text-slate-500">
-          Sin datos para {fecha}
+          Sin datos para el rango seleccionado
         </div>
       ) : (
         <>
@@ -153,24 +165,7 @@ export function EstadoContratosTab() {
 
           <div className="bg-white border border-border rounded-xl p-5 shadow-sm">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
-              <h3 className="text-base font-semibold text-slate-700">Histórico de Estados (Últimos 15 días)</h3>
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-slate-500" />
-                <input
-                  type="date"
-                  value={fechaGrafico || ''}
-                  onChange={(e) => setFechaGrafico(e.target.value || null)}
-                  className="border border-border rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
-                />
-                {fechaGrafico && (
-                  <button
-                    onClick={handleLimpiarFiltro}
-                    className="text-xs text-primary hover:underline"
-                  >
-                    Ver todo
-                  </button>
-                )}
-              </div>
+              <h3 className="text-base font-semibold text-slate-700">Histórico de Estados</h3>
             </div>
             {loading ? (
               <div className="flex justify-center py-8 text-slate-500">Cargando gráfico...</div>

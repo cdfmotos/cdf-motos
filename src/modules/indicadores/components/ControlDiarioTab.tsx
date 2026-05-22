@@ -63,58 +63,53 @@ function CustomTooltip({
 export function ControlDiarioTab() {
   const isOnline = useOnlineStatus();
 
-  const [fecha, setFecha] = useState(
-    toYMD(new Date())
-  );
+  const today = toYMD(new Date());
+  const [fechaDesde, setFechaDesde] = useState(today);
+  const [fechaHasta, setFechaHasta] = useState(today);
 
   const {
     data,
     loading,
     error,
-  } = useVistaControlDiario(fecha);
+  } = useVistaControlDiario(fechaDesde, fechaHasta);
 
   if (!isOnline) {
     return <OfflineMessage />;
   }
 
-  const esperado = data?.recaudo_esperado ?? 0;
+  // Agregamos los totales de todo el rango de fechas
+  const esperado = data?.reduce((sum, item) => sum + (item.recaudo_esperado ?? 0), 0) ?? 0;
+  const alcanzado = data?.reduce((sum, item) => sum + (item.recaudo_alcanzado ?? 0), 0) ?? 0;
+  const diferencia = esperado - alcanzado;
 
-  const alcanzado =
-    data?.recaudo_alcanzado ?? 0;
+  const diffPct = esperado > 0 ? ((alcanzado / esperado) * 100).toFixed(1) : '0.0';
 
-  const diferencia =
-    esperado - alcanzado;
-
-  const diffPct =
-    esperado > 0
-      ? (
-          (alcanzado / esperado) *
-          100
-        ).toFixed(1)
-      : '0.0';
-
-  const chartData = [
-    {
-      name: 'Recaudo',
-      Esperado: esperado,
-      Alcanzado: alcanzado,
-    },
-  ];
+  const chartData = data?.map(item => ({
+    name: item.fecha,
+    Esperado: item.recaudo_esperado ?? 0,
+    Alcanzado: item.recaudo_alcanzado ?? 0,
+  })) ?? [];
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <div className="flex items-center gap-2">
           <Calendar className="w-5 h-5 text-slate-500" />
-
-          <input
-            type="date"
-            value={fecha}
-            onChange={(e) =>
-              setFecha(e.target.value)
-            }
-            className="border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-          />
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={fechaDesde}
+              onChange={(e) => setFechaDesde(e.target.value)}
+              className="border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+            />
+            <span className="text-slate-500">a</span>
+            <input
+              type="date"
+              value={fechaHasta}
+              onChange={(e) => setFechaHasta(e.target.value)}
+              className="border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+            />
+          </div>
         </div>
       </div>
 
@@ -128,9 +123,9 @@ export function ControlDiarioTab() {
         <div className="flex justify-center py-12 text-slate-500">
           Cargando...
         </div>
-      ) : !data ? (
+      ) : !data || data.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-48 text-slate-500">
-          Sin datos para {fecha}
+          Sin datos para el rango seleccionado
         </div>
       ) : (
         <>

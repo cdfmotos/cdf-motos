@@ -48,39 +48,37 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
 
 export function AsistenciaTab() {
   const isOnline = useOnlineStatus();
-  const [fecha, setFecha] = useState(toYMD(new Date()));
-  const [fechaGrafico, setFechaGrafico] = useState<string | null>(null);
-  const { data, loading, error } = useVistaAsistenciaResumen(fecha);
-  const { data: historico, loading: loadingHistorico } = useVistaAsistenciaHistorica();
+  
+  const today = toYMD(new Date());
+  const quinceDiasAtras = new Date();
+  quinceDiasAtras.setDate(quinceDiasAtras.getDate() - 15);
+  
+  const [fechaDesde, setFechaDesde] = useState(toYMD(quinceDiasAtras));
+  const [fechaHasta, setFechaHasta] = useState(today);
+  
+  const { data, loading, error } = useVistaAsistenciaResumen(fechaDesde, fechaHasta);
+  const { data: historico, loading: loadingHistorico } = useVistaAsistenciaHistorica(fechaDesde, fechaHasta);
 
   if (!isOnline) return <OfflineMessage />;
 
-  const pctTotal = data?.pct_total ?? 0;
-  const pctMotos = data?.pct_motos ?? 0;
-  const pctPrestamos = data?.pct_prestamos ?? 0;
-  const asistenciaContratos = data?.asistencia_contratos ?? 0;
-  const asistenciaMotos = data?.asistencia_motos ?? 0;
-  const asistenciaPrestamos = data?.asistencia_prestamos ?? 0;
-  const contratosSinAsistencia = data?.contratos_sin_asistencia ?? 0;
-  const motosEsperadas = data?.motos_esperadas ?? 0;
-  const prestamosEsperados = data?.prestamos_esperados ?? 0;
-  const totalEsperados = data?.total_esperados ?? 0;
+  const calcularSuma = (key: keyof typeof data[0]) => {
+    if (!data || data.length === 0) return 0;
+    return data.reduce((acc, curr) => acc + (Number(curr[key]) || 0), 0);
+  };
 
-  const fechaLimiteStr = toYMD(new Date(Date.now() - 15 * 24 * 60 * 60 * 1000));
+  const asistenciaContratos = calcularSuma('asistencia_contratos');
+  const asistenciaMotos = calcularSuma('asistencia_motos');
+  const asistenciaPrestamos = calcularSuma('asistencia_prestamos');
+  const contratosSinAsistencia = calcularSuma('contratos_sin_asistencia');
+  const motosEsperadas = calcularSuma('motos_esperadas');
+  const prestamosEsperados = calcularSuma('prestamos_esperados');
+  const totalEsperados = calcularSuma('total_esperados');
 
-const chartDataFiltered = historico
-  .filter((h) => {
-    if (!h.fecha) return false;
+  const pctTotal = totalEsperados > 0 ? (asistenciaContratos / totalEsperados) * 100 : 0;
+  const pctMotos = motosEsperadas > 0 ? (asistenciaMotos / motosEsperadas) * 100 : 0;
+  const pctPrestamos = prestamosEsperados > 0 ? (asistenciaPrestamos / prestamosEsperados) * 100 : 0;
 
-    const fechaStr = h.fecha.split('T')[0];
-
-    if (fechaGrafico) {
-      return fechaStr === fechaGrafico;
-    }
-
-    return fechaStr >= fechaLimiteStr;
-  })
-  .map((h) => ({
+  const chartDataFiltered = historico.map((h) => ({
     fecha: h.fecha ? h.fecha.slice(5) : '-',
     'Asist. Motos': h.asistencia_motos ?? 0,
     'Motos Esp.': h.motos_esperadas ?? 0,
@@ -88,19 +86,26 @@ const chartDataFiltered = historico
     'Préstamos Esp.': h.prestamos_esperados ?? 0,
   }));
 
-  const handleLimpiarFiltro = () => setFechaGrafico(null);
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <div className="flex items-center gap-2">
           <Calendar className="w-5 h-5 text-slate-500" />
-          <input
-            type="date"
-            value={fecha}
-            onChange={(e) => setFecha(e.target.value)}
-            className="border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-          />
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={fechaDesde}
+              onChange={(e) => setFechaDesde(e.target.value)}
+              className="border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+            />
+            <span className="text-slate-500">a</span>
+            <input
+              type="date"
+              value={fechaHasta}
+              onChange={(e) => setFechaHasta(e.target.value)}
+              className="border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+            />
+          </div>
         </div>
       </div>
 
@@ -112,9 +117,9 @@ const chartDataFiltered = historico
 
       {loading ? (
         <div className="flex justify-center py-12 text-slate-500">Cargando...</div>
-      ) : !data ? (
+      ) : !data || data.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-48 text-slate-500">
-          Sin datos para {fecha}
+          Sin datos para el rango seleccionado
         </div>
       ) : (
         <>
@@ -173,24 +178,7 @@ const chartDataFiltered = historico
 
           <div className="bg-white border border-border rounded-xl p-5 shadow-sm">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
-              <h3 className="text-base font-semibold text-slate-700">Histórico de Asistencia (Últimos 15 días)</h3>
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-slate-500" />
-                <input
-                  type="date"
-                  value={fechaGrafico || ''}
-                  onChange={(e) => setFechaGrafico(e.target.value || null)}
-                  className="border border-border rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
-                />
-                {fechaGrafico && (
-                  <button
-                    onClick={handleLimpiarFiltro}
-                    className="text-xs text-primary hover:underline"
-                  >
-                    Ver todo
-                  </button>
-                )}
-              </div>
+              <h3 className="text-base font-semibold text-slate-700">Histórico de Asistencia</h3>
             </div>
             {loadingHistorico ? (
               <div className="flex justify-center py-8 text-slate-500">Cargando gráfico...</div>

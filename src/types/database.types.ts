@@ -458,6 +458,13 @@ export type Database = {
             foreignKeyName: "recaudo_contrato_id_fkey"
             columns: ["contrato_id"]
             isOneToOne: false
+            referencedRelation: "vista_contratos_abonados"
+            referencedColumns: ["contrato_id"]
+          },
+          {
+            foreignKeyName: "recaudo_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
             referencedRelation: "vista_control_diario"
             referencedColumns: ["numero_contrato"]
           },
@@ -765,6 +772,13 @@ export type Database = {
             foreignKeyName: "recaudo_contrato_id_fkey"
             columns: ["numero_contrato"]
             isOneToOne: false
+            referencedRelation: "vista_contratos_abonados"
+            referencedColumns: ["contrato_id"]
+          },
+          {
+            foreignKeyName: "recaudo_contrato_id_fkey"
+            columns: ["numero_contrato"]
+            isOneToOne: false
             referencedRelation: "vista_control_diario"
             referencedColumns: ["numero_contrato"]
           },
@@ -913,6 +927,41 @@ export type Database = {
           },
         ]
       }
+      vista_contratos_abonados: {
+        Row: {
+          cliente_cedula: string | null
+          contrato_id: number | null
+          cuota_diaria: number | null
+          deuda_esperada: number | null
+          dias_abiertos: number | null
+          dias_cubiertos: number | null
+          estado: string | null
+          fecha_inicio: string | null
+          placa: string | null
+          saldo_a_favor: number | null
+          tiene_abono: boolean | null
+          tipo_contrato: string | null
+          total_pagado: number | null
+          ultima_fecha_pago: string | null
+          valor_contrato: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contratos_cliente_cedula_fkey"
+            columns: ["cliente_cedula"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["cedula"]
+          },
+          {
+            foreignKeyName: "contratos_placa_fkey"
+            columns: ["placa"]
+            isOneToOne: false
+            referencedRelation: "motos"
+            referencedColumns: ["placa"]
+          },
+        ]
+      }
       vista_control_diario: {
         Row: {
           cuota_diaria: number | null
@@ -1038,6 +1087,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "vista_contratos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recaudo_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "vista_contratos_abonados"
+            referencedColumns: ["contrato_id"]
           },
           {
             foreignKeyName: "recaudo_contrato_id_fkey"
