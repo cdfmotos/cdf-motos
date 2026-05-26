@@ -1228,6 +1228,21 @@ export type Database = {
     Functions: {
       capturar_estado_diario: { Args: never; Returns: undefined }
       fn_actualizar_estado_diario: { Args: never; Returns: undefined }
+      fn_asistencia_global_por_periodo: {
+        Args: { p_anio: number; p_mes: number }
+        Returns: {
+          asistencia_contratos: number
+          asistencia_motos: number
+          asistencia_prestamos: number
+          dias_operativos: number
+          motos_esperadas: number
+          pct_motos_global: number
+          pct_prestamos_global: number
+          pct_total_global: number
+          prestamos_esperados: number
+          total_esperados: number
+        }[]
+      }
       fn_contar_dias_abiertos: {
         Args: { fecha_desde: string; fecha_hasta: string }
         Returns: number
