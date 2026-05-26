@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../../lib/supabase';
-import type { Database } from '../../../types/database.types';
 
 // We define the type locally since it might not be in the generated types yet
 export interface VistaAsistenciaGlobal {
@@ -29,19 +28,17 @@ export function useVistaAsistenciaHistoricaV3Global(anio: number, mes: number) {
         setLoading(true);
         setError(null);
 
-        // We call the RPC function with the provided year and month
-        const { data: row, error: err } = await supabase
-          .rpc('fn_asistencia_global_por_periodo', { 
-            p_anio: anio, 
-            p_mes: mes 
+        const { data: row, error: err } = await (supabase as any)
+          .rpc('fn_asistencia_global_por_periodo', {
+            p_anio: anio,
+            p_mes: mes
           })
           .maybeSingle();
 
         if (err) {
           setError(err.message);
         } else {
-          // Cast the result to our interface
-          setData(row as unknown as VistaAsistenciaGlobal);
+          setData(row as VistaAsistenciaGlobal);
         }
       } catch (e: any) {
         setError(e.message);
