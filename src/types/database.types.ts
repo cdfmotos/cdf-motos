@@ -451,6 +451,13 @@ export type Database = {
             foreignKeyName: "recaudo_contrato_id_fkey"
             columns: ["contrato_id"]
             isOneToOne: false
+            referencedRelation: "vista_asistencia_historica_v3_detalle"
+            referencedColumns: ["contrato_id"]
+          },
+          {
+            foreignKeyName: "recaudo_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
             referencedRelation: "vista_contratos"
             referencedColumns: ["id"]
           },
@@ -765,6 +772,13 @@ export type Database = {
             foreignKeyName: "recaudo_contrato_id_fkey"
             columns: ["numero_contrato"]
             isOneToOne: false
+            referencedRelation: "vista_asistencia_historica_v3_detalle"
+            referencedColumns: ["contrato_id"]
+          },
+          {
+            foreignKeyName: "recaudo_contrato_id_fkey"
+            columns: ["numero_contrato"]
+            isOneToOne: false
             referencedRelation: "vista_contratos"
             referencedColumns: ["id"]
           },
@@ -851,6 +865,75 @@ export type Database = {
           pct_motos: number | null
           pct_prestamos: number | null
           pct_total: number | null
+          prestamos_esperados: number | null
+          total_esperados: number | null
+        }
+        Relationships: []
+      }
+      vista_asistencia_historica_v3: {
+        Row: {
+          asistencia_contratos: number | null
+          asistencia_motos: number | null
+          asistencia_prestamos: number | null
+          fecha: string | null
+          motos_esperadas: number | null
+          pct_motos: number | null
+          pct_prestamos: number | null
+          pct_total: number | null
+          prestamos_esperados: number | null
+          total_esperados: number | null
+        }
+        Relationships: []
+      }
+      vista_asistencia_historica_v3_detalle: {
+        Row: {
+          abono_dia: number | null
+          asistio: boolean | null
+          cliente_cedula: string | null
+          contrato_id: number | null
+          cuota_diaria: number | null
+          dias_cubiertos: number | null
+          estado: string | null
+          estado_dia: string | null
+          fecha: string | null
+          fecha_inicio: string | null
+          monto_recaudado_dia: number | null
+          placa: string | null
+          recaudo_esperado_acumulado: number | null
+          saldo_acumulado: number | null
+          sistema_abierto: boolean | null
+          tipo_contrato: string | null
+          total_recaudado_acumulado: number | null
+          total_recaudado_dia: number | null
+          valor_contrato: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contratos_cliente_cedula_fkey"
+            columns: ["cliente_cedula"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["cedula"]
+          },
+          {
+            foreignKeyName: "contratos_placa_fkey"
+            columns: ["placa"]
+            isOneToOne: false
+            referencedRelation: "motos"
+            referencedColumns: ["placa"]
+          },
+        ]
+      }
+      vista_asistencia_historica_v3_global: {
+        Row: {
+          asistencia_contratos: number | null
+          asistencia_motos: number | null
+          asistencia_prestamos: number | null
+          dias_operativos: number | null
+          motos_esperadas: number | null
+          pct_motos_global: number | null
+          pct_prestamos_global: number | null
+          pct_total_global: number | null
           prestamos_esperados: number | null
           total_esperados: number | null
         }
@@ -1080,6 +1163,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "vista_actividades_recientes"
             referencedColumns: ["numero_contrato"]
+          },
+          {
+            foreignKeyName: "recaudo_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "vista_asistencia_historica_v3_detalle"
+            referencedColumns: ["contrato_id"]
           },
           {
             foreignKeyName: "recaudo_contrato_id_fkey"
