@@ -13,7 +13,8 @@ const nf = (v: number | null | undefined) =>
 
 const df = (v: string | null | undefined) => {
   if (!v) return '—';
-  return new Date(v).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const date = v.length === 10 ? new Date(`${v}T00:00:00`) : new Date(v);
+  return date.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
 };
 
 interface RecaudosTableProps {

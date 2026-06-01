@@ -44,7 +44,7 @@ export function RecaudosPage() {
 
       generarPDFRecibo({
         numeroRecaudo: r.numero_recaudo ?? `N/A`,
-        fechaRecaudo: new Date(r.fecha_recaudo),
+        fechaRecaudo: new Date(r.fecha_recaudo.length === 10 ? `${r.fecha_recaudo}T00:00:00` : r.fecha_recaudo),
         contratoNum: String(r.contrato_id),
         placa: contrato.placa,
         nombres: cliente ? `${cliente.nombres} ${cliente.apellidos}` : 'N/A',

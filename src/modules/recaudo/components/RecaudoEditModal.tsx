@@ -85,7 +85,7 @@ export function RecaudoEditModal({ recaudo, onClose, onSave }: RecaudoEditModalP
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-slate-500">Fecha</span>
-                <span className="font-medium">{new Date(recaudo.fecha_recaudo).toLocaleDateString('es-CO')}</span>
+                <span className="font-medium">{new Date(recaudo.fecha_recaudo.length === 10 ? `${recaudo.fecha_recaudo}T00:00:00` : recaudo.fecha_recaudo).toLocaleDateString('es-CO')}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-slate-500">Cuota Diaria</span>
