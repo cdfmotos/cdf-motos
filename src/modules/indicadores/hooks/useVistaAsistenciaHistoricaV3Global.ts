@@ -28,17 +28,19 @@ export function useVistaAsistenciaHistoricaV3Global(anio: number, mes: number) {
         setLoading(true);
         setError(null);
 
-        const { data: row, error: err } = await (supabase as any)
-          .rpc('fn_asistencia_global_por_periodo', {
-            p_anio: anio,
-            p_mes: mes
+        // We call the RPC function with the provided year and month
+        const { data: row, error: err } = await supabase
+          .rpc('fn_asistencia_global_por_periodo', { 
+            p_anio: anio, 
+            p_mes: mes 
           })
           .maybeSingle();
 
         if (err) {
           setError(err.message);
         } else {
-          setData(row as VistaAsistenciaGlobal);
+          // Cast the result to our interface
+          setData(row as unknown as VistaAsistenciaGlobal);
         }
       } catch (e: any) {
         setError(e.message);
