@@ -26,16 +26,16 @@ const TABLAS: Array<{
   nombre: NombreTabla;
   tabla: Table<any, any>;
 }> = [
-  { nombre: 'contratos', tabla: db.contratos },
-  { nombre: 'clientes', tabla: db.clientes },
-  { nombre: 'gastos', tabla: db.gastos },
-  { nombre: 'motos', tabla: db.motos },
-  { nombre: 'gps', tabla: db.gps },
-  { nombre: 'soats', tabla: db.soats },
-  { nombre: 'estado_sistema', tabla: db.estado_sistema },
-  { nombre: 'notificaciones', tabla: db.notificaciones },
-  { nombre: 'users', tabla: db.users },
-];
+    { nombre: 'contratos', tabla: db.contratos },
+    { nombre: 'clientes', tabla: db.clientes },
+    { nombre: 'gastos', tabla: db.gastos },
+    { nombre: 'motos', tabla: db.motos },
+    { nombre: 'gps', tabla: db.gps },
+    { nombre: 'soats', tabla: db.soats },
+    { nombre: 'estado_sistema', tabla: db.estado_sistema },
+    { nombre: 'notificaciones', tabla: db.notificaciones },
+    { nombre: 'users', tabla: db.users },
+  ];
 
 async function hidratarTabla<T extends SupabaseRow>(
   nombre: NombreTabla,
@@ -46,26 +46,37 @@ async function hidratarTabla<T extends SupabaseRow>(
     mensaje: `Cargando ${nombre}...`,
   });
 
-  const { data, error } = await supabase
-    .from(nombre)
-    .select('*');
+  const PAGE_SIZE = 1000;
+  let desde = 0;
+  let totalInsertados = 0;
 
-  if (error) {
-    throw new Error(`Error en ${nombre}: ${error.message}`);
-  }
+  while (true) {
+    const { data, error } = await supabase
+      .from(nombre)
+      .select('*')
+      .range(desde, desde + PAGE_SIZE - 1);
 
-  if (!data || data.length === 0) {
-    return;
-  }
+    if (error) {
+      throw new Error(`Error en ${nombre}: ${error.message}`);
+    }
 
-  const rows: SyncRow[] = data.map(
-    (row: SupabaseRow) => ({
+    if (!data || data.length === 0) break;
+
+    const rows: SyncRow[] = data.map((row: SupabaseRow) => ({
       ...row,
       _sync_status: 'synced',
-    })
-  );
+    }));
 
-  await dexieTable.bulkPut(rows as T[]);
+    await dexieTable.bulkPut(rows as T[]);
+
+    totalInsertados += data.length;
+    console.log(`[Hydrate] ${nombre}: ${totalInsertados} registros cargados`);
+
+    // Si devolvió menos de PAGE_SIZE, ya no hay más páginas
+    if (data.length < PAGE_SIZE) break;
+
+    desde += PAGE_SIZE;
+  }
 }
 
 async function hidratarRecaudo() {

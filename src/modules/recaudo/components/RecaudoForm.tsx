@@ -23,11 +23,21 @@ const nf = (v: number | null | undefined) =>
 export function RecaudoForm({ onClose, onSubmit, buscarContrato }: RecaudoFormProps) {
   const { isOnline } = useOnlineStatus();
   const { addToast } = useToast();
+
+  const getLocalDateString = () => {
+    const date = new Date();
+    return [
+      date.getFullYear(),
+      String(date.getMonth() + 1).padStart(2, '0'),
+      String(date.getDate()).padStart(2, '0'),
+    ].join('-');
+  };
+
   const [contratoId, setContratoId] = useState('');
   const [contrato, setContrato] = useState<ContratoWithCliente | null>(null);
   const [buscando, setBuscando] = useState(false);
   const [monto, setMonto] = useState('');
-  const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
+  const [fecha, setFecha] = useState(getLocalDateString());
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -206,7 +216,7 @@ export function RecaudoForm({ onClose, onSubmit, buscarContrato }: RecaudoFormPr
               type="date"
               value={fecha}
               onChange={e => setFecha(e.target.value)}
-              max={new Date().toISOString().split('T')[0]}
+              max={getLocalDateString()}
               className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />
           </div>

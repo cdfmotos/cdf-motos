@@ -10,10 +10,19 @@ interface GastoFormProps {
 }
 
 export function GastoForm({ gasto, onClose, onSave, loading }: GastoFormProps) {
+  const getLocalDateString = () => {
+    const date = new Date();
+    return [
+      date.getFullYear(),
+      String(date.getMonth() + 1).padStart(2, '0'),
+      String(date.getDate()).padStart(2, '0'),
+    ].join('-');
+  };
+
   const [formData, setFormData] = useState({
     concepto: '',
     monto: '',
-    fecha: new Date().toISOString().split('T')[0],
+    fecha: getLocalDateString(),
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -23,7 +32,7 @@ export function GastoForm({ gasto, onClose, onSave, loading }: GastoFormProps) {
       setFormData({
         concepto: gasto.concepto || '',
         monto: gasto.monto?.toString() || '',
-        fecha: gasto.fecha || new Date().toISOString().split('T')[0],
+        fecha: gasto.fecha || getLocalDateString(),
       });
     }
   }, [gasto]);
@@ -46,27 +55,26 @@ export function GastoForm({ gasto, onClose, onSave, loading }: GastoFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
     }
-    
+
     const submitData = {
       concepto: formData.concepto,
       monto: Number(formData.monto),
       fecha: formData.fecha,
     };
-    
+
     await onSave(submitData);
   };
 
-  const getInputClass = (fieldName: string) => 
-    `w-full px-3 py-2 border rounded-lg outline-none transition-colors ${
-      errors[fieldName] 
-        ? 'border-red-500 focus:ring-1 focus:ring-red-500' 
-        : 'border-border focus:ring-1 focus:ring-primary focus:border-primary'
+  const getInputClass = (fieldName: string) =>
+    `w-full px-3 py-2 border rounded-lg outline-none transition-colors ${errors[fieldName]
+      ? 'border-red-500 focus:ring-1 focus:ring-red-500'
+      : 'border-border focus:ring-1 focus:ring-primary focus:border-primary'
     }`;
 
   return (
@@ -76,7 +84,7 @@ export function GastoForm({ gasto, onClose, onSave, loading }: GastoFormProps) {
           <h2 className="text-xl font-semibold text-slate-800">
             {gasto ? 'Editar Gasto' : 'Nuevo Gasto'}
           </h2>
-          <button 
+          <button
             onClick={onClose}
             className="p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-full transition-colors"
           >
@@ -86,43 +94,43 @@ export function GastoForm({ gasto, onClose, onSave, loading }: GastoFormProps) {
 
         <div className="p-6 overflow-y-auto flex-1">
           <form id="gasto-form" onSubmit={handleSubmit} className="space-y-6">
-            
+
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Fecha *</label>
-              <input 
-                type="date" 
-                name="fecha" 
-                value={formData.fecha} 
+              <input
+                type="date"
+                name="fecha"
+                value={formData.fecha}
                 onChange={handleChange}
-                className={getInputClass('fecha')} 
+                className={getInputClass('fecha')}
               />
               {errors.fecha && <span className="text-xs text-red-500 mt-1 block">{errors.fecha}</span>}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Concepto *</label>
-              <textarea 
-                name="concepto" 
-                value={formData.concepto} 
+              <textarea
+                name="concepto"
+                value={formData.concepto}
                 onChange={handleChange}
                 placeholder="Descripción del gasto"
                 rows={3}
-                className={getInputClass('concepto')} 
+                className={getInputClass('concepto')}
               />
               {errors.concepto && <span className="text-xs text-red-500 mt-1 block">{errors.concepto}</span>}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Monto *</label>
-              <input 
-                type="number" 
-                name="monto" 
-                value={formData.monto} 
+              <input
+                type="number"
+                name="monto"
+                value={formData.monto}
                 onChange={handleChange}
                 min="0"
                 step="0.01"
                 placeholder="Ej: 50000"
-                className={getInputClass('monto')} 
+                className={getInputClass('monto')}
               />
               {errors.monto && <span className="text-xs text-red-500 mt-1 block">{errors.monto}</span>}
             </div>
@@ -131,15 +139,15 @@ export function GastoForm({ gasto, onClose, onSave, loading }: GastoFormProps) {
         </div>
 
         <div className="p-6 border-t border-border bg-slate-50 flex justify-end gap-3 rounded-b-xl">
-          <button 
-            type="button" 
+          <button
+            type="button"
             onClick={onClose}
             className="px-4 py-2 border border-border text-slate-700 bg-white rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium"
           >
             Cancelar
           </button>
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             form="gasto-form"
             disabled={loading}
             className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium disabled:opacity-70"

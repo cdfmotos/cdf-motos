@@ -124,14 +124,16 @@ export async function createRecaudo(input: RecaudoInput): Promise<{
   inFlight.add(idempotencyKey);
 
   try {
-    const existing = await db.recaudo
-      .where('contrato_id')
-      .equals(input.contrato_id)
-      .and(r => r.fecha_recaudo === input.fecha_recaudo && r.monto_recaudado === input.monto_recaudado)
-      .first();
+    if (!navigator.onLine) {
+      const existing = await db.recaudo
+        .where('contrato_id')
+        .equals(input.contrato_id)
+        .and(r => r.fecha_recaudo === input.fecha_recaudo && r.monto_recaudado === input.monto_recaudado)
+        .first();
 
-    if (existing) {
-      return { success: false, error: 'Este recaudo ya fue registrado' };
+      if (existing) {
+        return { success: false, error: 'Este recaudo ya fue registrado' };
+      }
     }
 
     const contrato = await db.contratos.get(input.contrato_id);

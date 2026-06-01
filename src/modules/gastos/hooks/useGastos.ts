@@ -1,18 +1,26 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-
 import {
   getGastos,
   createGasto,
   updateGasto,
   deleteGasto,
 } from '../services/gastosService';
-
 import type { Gasto } from '../../../db/schema';
 
 export interface GastoFilters {
   concepto: string;
-  fechaInicio: string;
-  fechaFin: string;
+  fecha: string;
+}
+
+// Normaliza cualquier fecha (Date, ISO string, "YYYY-MM-DD") a "YYYY-MM-DD"
+function toDateStr(fecha: unknown): string {
+  if (fecha instanceof Date) {
+    const y = fecha.getFullYear();
+    const m = String(fecha.getMonth() + 1).padStart(2, '0');
+    const d = String(fecha.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  return String(fecha).slice(0, 10);
 }
 
 export function useGastos() {
@@ -22,16 +30,13 @@ export function useGastos() {
 
   const [filters, setFilters] = useState<GastoFilters>({
     concepto: '',
-    fechaInicio: '',
-    fechaFin: '',
+    fecha: '',
   });
 
   const loadGastos = useCallback(async () => {
     try {
       setLoading(true);
-
       const data = await getGastos();
-
       setGastos(data);
     } catch (err) {
       console.error('Error loading gastos:', err);
@@ -41,51 +46,29 @@ export function useGastos() {
     }
   }, []);
 
-  // ✅ Correcto: cargar datos externos
-useEffect(() => {
-  const fetchData = async () => {
-    try {
-      setLoading(true);
+  useEffect(() => {
+    loadGastos();
+  }, [loadGastos]);
 
-      const data = await getGastos();
-
-      setGastos(data);
-    } catch (err) {
-      console.error(err);
-      setError('Error al cargar gastos');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  fetchData();
-}, []);
-
-  // ✅ Derivar estado con useMemo
   const filteredGastos = useMemo(() => {
     let result = [...gastos];
 
     if (filters.concepto) {
       result = result.filter(g =>
-        g.concepto
-          .toLowerCase()
-          .includes(filters.concepto.toLowerCase())
+        g.concepto.toLowerCase().includes(filters.concepto.toLowerCase())
       );
     }
 
-    if (filters.fechaInicio) {
-      result = result.filter(
-        g => g.fecha && g.fecha >= filters.fechaInicio
-      );
-    }
+    if (filters.fecha) {
+  result = result.filter(g => {
+    const converted = toDateStr(g.fecha);
+    return g.fecha ? converted === filters.fecha : false;
+  });
+}
 
-    if (filters.fechaFin) {
-      result = result.filter(
-        g => g.fecha && g.fecha <= filters.fechaFin
-      );
-    }
-
-    result.sort((a, b) => b.fecha.localeCompare(a.fecha));
+    result.sort((a, b) =>
+      toDateStr(b.fecha).localeCompare(toDateStr(a.fecha))
+    );
 
     return result;
   }, [gastos, filters]);
@@ -95,9 +78,7 @@ useEffect(() => {
   ) => {
     try {
       const newGasto = await createGasto(gasto);
-
       setGastos(prev => [newGasto, ...prev]);
-
       return true;
     } catch (err) {
       console.error('Error adding gasto:', err);
@@ -111,11 +92,7 @@ useEffect(() => {
   ) => {
     try {
       const updated = await updateGasto(id, updates);
-
-      setGastos(prev =>
-        prev.map(g => (g.id === id ? updated : g))
-      );
-
+      setGastos(prev => prev.map(g => (g.id === id ? updated : g)));
       return true;
     } catch (err) {
       console.error('Error updating gasto:', err);
@@ -126,11 +103,7 @@ useEffect(() => {
   const removeGasto = async (id: number) => {
     try {
       await deleteGasto(id);
-
-      setGastos(prev =>
-        prev.filter(g => g.id !== id)
-      );
-
+      setGastos(prev => prev.filter(g => g.id !== id));
       return true;
     } catch (err) {
       console.error('Error deleting gasto:', err);
@@ -139,22 +112,13 @@ useEffect(() => {
   };
 
   const syncGasto = async (gasto: Gasto) => {
-    if (
-      gasto._sync_status !== 'pending' &&
-      gasto._sync_status !== 'error'
-    ) {
+    if (gasto._sync_status !== 'pending' && gasto._sync_status !== 'error') {
       return false;
     }
-
     try {
-      const { syncEngine } = await import(
-        '../../../db/sync/syncEngine'
-      );
-
+      const { syncEngine } = await import('../../../db/sync/syncEngine');
       await syncEngine.procesarCola();
-
       await loadGastos();
-
       return true;
     } catch (err) {
       console.error('Error syncing gasto:', err);
