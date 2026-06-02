@@ -151,7 +151,7 @@ export async function createRecaudo(input: RecaudoInput): Promise<{
     const contrato = await db.contratos.get(input.contrato_id);
     if (!contrato) return { success: false, error: 'Contrato no encontrado' };
 
-    const { saldo } = await getSaldoPendiente(input.contrato_id, false);
+    const { saldo } = await getSaldoPendiente(input.contrato_id, navigator.onLine);
     const saldoPendiente = saldo ?? contrato.valor_contrato;
     const monto = input.monto_recaudado;
     const cuota = input.cuota_diaria_pactada;
@@ -235,18 +235,27 @@ export async function recalcularSaldosContrato(contratoId: number): Promise<void
     return timeA - timeB;
   });
 
-  let saldoAcumulado = 0;
+  if (recaudos.length === 0) return;
 
-  for (const r of recaudos) {
+  let prevNuevoSaldo: number | null = null;
+
+  for (let i = 0; i < recaudos.length; i++) {
+    const r = recaudos[i];
     const monto = r.monto_recaudado;
     const cuota = r.cuota_diaria_pactada;
 
-    const saldoPendiente = valorContrato - saldoAcumulado;
+    let saldoPendiente: number;
+    if (i === 0) {
+      saldoPendiente = r.saldo_pendiente ?? valorContrato;
+    } else {
+      saldoPendiente = prevNuevoSaldo ?? valorContrato;
+    }
+
     const nuevoSaldo = Math.max(saldoPendiente - monto, 0);
     const diasPagados = Math.floor(monto / cuota);
     const abono = Math.max(monto - (cuota * diasPagados), 0);
 
-    saldoAcumulado += monto;
+    prevNuevoSaldo = nuevoSaldo;
 
     const changes = {
       saldo_pendiente: saldoPendiente,
@@ -255,10 +264,17 @@ export async function recalcularSaldosContrato(contratoId: number): Promise<void
       abono: abono,
     };
 
-    if (r.id) {
-      await db.recaudo.update(r.id, changes);
-    } else if (r._local_id) {
-      await db.recaudo.where('_local_id').equals(r._local_id).modify(changes);
+    if (
+      r.saldo_pendiente !== saldoPendiente ||
+      r.nuevo_saldo !== nuevoSaldo ||
+      r.dias_pagados !== diasPagados ||
+      r.abono !== abono
+    ) {
+      if (r.id) {
+        await db.recaudo.update(r.id, changes);
+      } else if (r._local_id) {
+        await db.recaudo.where('_local_id').equals(r._local_id).modify(changes);
+      }
     }
   }
 }
@@ -299,7 +315,7 @@ export async function editarMontoRecaudo(id: number, nuevoMonto: number): Promis
   const contrato = await db.contratos.get(recaudo.contrato_id);
   if (!contrato) throw new Error('Contrato no encontrado');
 
-  const { saldo } = await getSaldoPendiente(recaudo.contrato_id, false);
+  const { saldo } = await getSaldoPendiente(recaudo.contrato_id, navigator.onLine);
   const saldoPendiente = saldo ?? contrato.valor_contrato;
   const nuevoSaldo = saldoPendiente - nuevoMonto;
   const diasPagados = Math.floor(nuevoMonto / recaudo.cuota_diaria_pactada);

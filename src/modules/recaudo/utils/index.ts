@@ -1,1 +1,2 @@
 export { generarPDFRecibo, obtenerFechaRecibo, type ReciboPDFData } from './generarPDFRecibo';
+export { exportarRecaudosExcel, type RecaudoExportType, type RecaudoExportOptions } from './exportarRecaudosExcel';

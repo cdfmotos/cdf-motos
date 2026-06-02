@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, DollarSign } from 'lucide-react';
+import { Plus, DollarSign, FileSpreadsheet } from 'lucide-react';
 import { useRecaudos } from './hooks/useRecaudos';
 import { RecaudosTable } from './components/RecaudosTable';
 import { RecaudosFilter } from './components/RecaudosFilter';
 import { RecaudoForm } from './components/RecaudoForm';
 import { RecaudoEditModal } from './components/RecaudoEditModal';
+import { RecaudosExportModal } from './components/RecaudosExportModal';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 import { useToast } from '../../components/ui/Toast';
 import { generarPDFRecibo, obtenerFechaRecibo } from './utils';
@@ -20,6 +21,7 @@ export function RecaudosPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingRecaudo, setEditingRecaudo] = useState<Recaudo | null>(null);
   const [printQueue, setPrintQueue] = useState<Recaudo[]>([]);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   useEffect(() => {
     if (printQueue.length > 0) {
@@ -86,24 +88,34 @@ export function RecaudosPage() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Recaudos</h1>
           <p className="text-slate-500">Registro y gestión de recaudos</p>
         </div>
-        <button
-          onClick={() => {
-            if (!canWrite()) {
-              addToast('El día está cerrado. No se permiten nuevos registros.', 'warning');
-              return;
-            }
-            setShowForm(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          Nuevo Recaudo
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setIsExportModalOpen(true)}
+            className="flex items-center gap-2 px-3 py-2 border border-border text-slate-600 bg-white rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium"
+            title="Exportar a Excel"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-green-600" />
+            <span className="hidden sm:inline">Exportar</span>
+          </button>
+          <button
+            onClick={() => {
+              if (!canWrite()) {
+                addToast('El día está cerrado. No se permiten nuevos registros.', 'warning');
+                return;
+              }
+              setShowForm(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+            Nuevo Recaudo
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -176,6 +188,11 @@ export function RecaudosPage() {
           onSave={() => { setEditingRecaudo(null); reload(); }}
         />
       )}
+
+      <RecaudosExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+      />
     </div>
   );
 }
