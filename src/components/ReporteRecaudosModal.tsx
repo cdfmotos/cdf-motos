@@ -14,7 +14,7 @@ interface ReporteRecaudosModalProps {
 }
 
 export function ReporteRecaudosModal({ open, onClose }: ReporteRecaudosModalProps) {
-  const isOnline = useOnlineStatus();
+  const { isOnline } = useOnlineStatus();
   const [data, setData] = useState<VistaReportePendientes[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

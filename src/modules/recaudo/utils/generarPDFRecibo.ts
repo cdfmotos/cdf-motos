@@ -66,3 +66,30 @@ export function generarPDFRecibo(data: ReciboPDFData): void {
 
   doc.output('dataurlnewwindow');
 }
+
+export function obtenerFechaRecibo(fechaRecaudo: string, createdAt: string | null | undefined): Date {
+  if (!fechaRecaudo) return new Date();
+
+  // Dividir fecha_recaudo YYYY-MM-DD
+  const partes = fechaRecaudo.split('T')[0].split('-');
+  if (partes.length === 3) {
+    const anio = parseInt(partes[0], 10);
+    const mes = parseInt(partes[1], 10) - 1;
+    const dia = parseInt(partes[2], 10);
+
+    if (createdAt) {
+      const createdDate = new Date(createdAt);
+      return new Date(
+        anio,
+        mes,
+        dia,
+        createdDate.getHours(),
+        createdDate.getMinutes(),
+        createdDate.getSeconds()
+      );
+    }
+    return new Date(anio, mes, dia);
+  }
+
+  return new Date(fechaRecaudo);
+}

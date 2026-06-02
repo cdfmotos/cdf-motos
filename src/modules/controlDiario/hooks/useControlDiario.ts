@@ -7,7 +7,7 @@ export function useControlDiario() {
   const [recaudosHoy, setRecaudosHoy] = useState<Recaudo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const isOnline = useOnlineStatus();
+  const { isOnline } = useOnlineStatus();
 
   const loadRecaudosHoy = useCallback(async () => {
     try {

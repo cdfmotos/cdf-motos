@@ -1,11 +1,12 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { DataTable } from '../../../components/ui/DataTable';
 import type { Column } from '../../../components/ui/DataTable/types/types';
-import type { Recaudo } from '../../../db/schema';
+import type { Recaudo, Contrato } from '../../../db/schema';
 import { syncEngine } from '../../../db/sync/syncEngine';
 import { useOnlineStatus } from '../../../hooks/useOnlineStatus';
 import { useToast } from '../../../components/ui/Toast';
 import { RefreshCw, Edit2, Printer } from 'lucide-react';
+import { db } from '../../../db/db';
 
 const nf = (v: number | null | undefined) =>
   new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })
@@ -29,6 +30,23 @@ function RecaudosTableComponent({ recaudo, loading, onSyncSuccess, onEdit, onPri
   const { isOnline } = useOnlineStatus();
   const { addToast } = useToast();
   const [syncingId, setSyncingId] = useState<string | null>(null);
+  const [contratosMap, setContratosMap] = useState<Record<number, Contrato>>({});
+
+  useEffect(() => {
+    const loadContratos = async () => {
+      try {
+        const list = await db.contratos.toArray();
+        const map: Record<number, Contrato> = {};
+        list.forEach((c) => {
+          if (c.id) map[c.id] = c;
+        });
+        setContratosMap(map);
+      } catch (err) {
+        console.error('Error al cargar contratos para la tabla:', err);
+      }
+    };
+    loadContratos();
+  }, [recaudo]);
 
   const handleSync = async (row: Recaudo) => {
     const pk = row._local_id ?? String(row.id);
@@ -65,6 +83,42 @@ function RecaudosTableComponent({ recaudo, loading, onSyncSuccess, onEdit, onPri
       accessorKey: 'contrato_id',
       sortable: true,
       cell: (row) => <span className="font-medium text-slate-800">{row.contrato_id}</span>,
+    },
+    {
+      header: 'Placa',
+      accessorKey: 'contrato_id',
+      sortable: true,
+      cell: (row) => {
+        const contrato = contratosMap[row.contrato_id];
+        return <span>{contrato?.placa || 'N/A'}</span>;
+      },
+    },
+    {
+      header: 'Tipo Contrato',
+      accessorKey: 'tipo_contrato',
+      sortable: true,
+      cell: (row) => {
+        const tipo = row.tipo_contrato || contratosMap[row.contrato_id]?.tipo_contrato || '—';
+        return <span className="capitalize">{tipo}</span>;
+      },
+    },
+    {
+      header: 'Cuota Diaria',
+      accessorKey: 'cuota_diaria_pactada',
+      sortable: true,
+      cell: (row) => {
+        const cuota = row.cuota_diaria_pactada || contratosMap[row.contrato_id]?.cuota_diaria || 0;
+        return <span>{nf(cuota)}</span>;
+      },
+    },
+    {
+      header: 'Valor Contrato',
+      accessorKey: 'contrato_id',
+      sortable: true,
+      cell: (row) => {
+        const contrato = contratosMap[row.contrato_id];
+        return <span>{contrato ? nf(contrato.valor_contrato) : '—'}</span>;
+      },
     },
     {
       header: 'N° Recaudo',
@@ -160,7 +214,7 @@ function RecaudosTableComponent({ recaudo, loading, onSyncSuccess, onEdit, onPri
         );
       },
     },
-  ], []);
+  ], [contratosMap, syncingId, isOnline]);
 
   return (
     <DataTable

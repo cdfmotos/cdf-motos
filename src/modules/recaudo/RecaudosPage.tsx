@@ -7,7 +7,7 @@ import { RecaudoForm } from './components/RecaudoForm';
 import { RecaudoEditModal } from './components/RecaudoEditModal';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 import { useToast } from '../../components/ui/Toast';
-import { generarPDFRecibo } from './utils';
+import { generarPDFRecibo, obtenerFechaRecibo } from './utils';
 import { db } from '../../db/db';
 import type { Recaudo } from '../../db/schema';
 import { useBlockedDay } from '../../hooks/useBlockedDay';
@@ -44,7 +44,7 @@ export function RecaudosPage() {
 
       generarPDFRecibo({
         numeroRecaudo: r.numero_recaudo ?? `N/A`,
-        fechaRecaudo: new Date(r.fecha_recaudo.length === 10 ? `${r.fecha_recaudo}T00:00:00` : r.fecha_recaudo),
+        fechaRecaudo: obtenerFechaRecibo(r.fecha_recaudo, r.created_at),
         contratoNum: String(r.contrato_id),
         placa: contrato.placa,
         nombres: cliente ? `${cliente.nombres} ${cliente.apellidos}` : 'N/A',

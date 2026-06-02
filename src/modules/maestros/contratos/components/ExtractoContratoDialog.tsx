@@ -28,7 +28,7 @@ export function ExtractoContratoDialog({ open, onClose, contratoId }: ExtractoCo
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [generandoPDF, setGenerandoPDF] = useState(false);
-  const isOnline = useOnlineStatus();
+  const { isOnline } = useOnlineStatus();
 
   useEffect(() => {
     if (!open || !contratoId) return;

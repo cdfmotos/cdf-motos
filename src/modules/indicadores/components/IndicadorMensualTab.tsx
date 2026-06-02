@@ -10,7 +10,7 @@ import type { Database } from '../../../types/database.types';
 type Row = Database['public']['Views']['view_indicadores_mensuales']['Row'];
 
 export function IndicadorMensualTab() {
-  const isOnline = useOnlineStatus();
+  const { isOnline } = useOnlineStatus();
   const { data, loading, error } = useVistaIndicadoresMensuales();
 
   if (!isOnline) return <OfflineMessage />;

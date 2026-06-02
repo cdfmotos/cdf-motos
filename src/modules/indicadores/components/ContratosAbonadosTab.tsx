@@ -10,7 +10,7 @@ import { CheckCircle, XCircle } from 'lucide-react';
 type Row = Database['public']['Views']['vista_contratos_abonados']['Row'];
 
 export function ContratosAbonadosTab() {
-  const isOnline = useOnlineStatus();
+  const { isOnline } = useOnlineStatus();
   const { data, loading, error } = useVistaContratosAbonados();
 
   if (!isOnline) return <OfflineMessage />;

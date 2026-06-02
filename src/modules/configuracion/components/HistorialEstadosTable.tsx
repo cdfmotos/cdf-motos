@@ -14,7 +14,7 @@ interface HistorialEstadosTableProps {
 }
 
 export function HistorialEstadosTable({ data, loading, onEdit, onSync }: HistorialEstadosTableProps) {
-  const isOnline = useOnlineStatus();
+  const { isOnline } = useOnlineStatus();
   const [syncingId, setSyncingId] = useState<string | null>(null);
 
   const handleSync = async (estado: EstadoSistema) => {

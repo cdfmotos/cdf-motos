@@ -28,7 +28,7 @@ import { useOnlineStatus } from './hooks/useOnlineStatus';
 
 function ProtectedLayout() {
   const { isAuthenticated } = useAuthContext();
-  const isOnline = useOnlineStatus();
+  const { isOnline } = useOnlineStatus();
   const [openCambioEstado, setOpenCambioEstado] = useState(false);
   const [openReporteRecaudos, setOpenReporteRecaudos] = useState(false);
 

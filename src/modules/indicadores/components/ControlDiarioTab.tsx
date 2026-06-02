@@ -61,7 +61,7 @@ function CustomTooltip({
 }
 
 export function ControlDiarioTab() {
-  const isOnline = useOnlineStatus();
+  const { isOnline } = useOnlineStatus();
 
   const today = toYMD(new Date());
   const [fechaDesde, setFechaDesde] = useState(today);

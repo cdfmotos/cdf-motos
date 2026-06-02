@@ -10,7 +10,7 @@ import type { Database } from '../../../types/database.types';
 type Row = Database['public']['Views']['vista_control_efectivo']['Row'];
 
 export function ResumenDiarioTab() {
-  const isOnline = useOnlineStatus();
+  const { isOnline } = useOnlineStatus();
   const { data, loading, error } = useVistaControlEfectivoListado();
 
   if (!isOnline) return <OfflineMessage />;

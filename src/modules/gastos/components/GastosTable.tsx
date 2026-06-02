@@ -15,7 +15,7 @@ interface GastosTableProps {
 }
 
 export function GastosTable({ data, loading, onEdit, onDelete, onSync }: GastosTableProps) {
-  const isOnline = useOnlineStatus();
+  const { isOnline } = useOnlineStatus();
   const [syncingId, setSyncingId] = useState<number | null>(null);
 
   const handleSync = async (gasto: Gasto) => {

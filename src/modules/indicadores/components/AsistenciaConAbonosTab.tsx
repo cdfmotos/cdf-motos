@@ -54,7 +54,7 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
 }
 
 export function AsistenciaConAbonosTab() {
-  const isOnline = useOnlineStatus();
+  const { isOnline } = useOnlineStatus();
 
   const today = toYMD(new Date());
   const quinceDiasAtras = new Date();

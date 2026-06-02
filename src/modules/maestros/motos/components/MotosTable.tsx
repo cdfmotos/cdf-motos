@@ -17,7 +17,7 @@ interface MotosTableProps {
 }
 
 export function MotosTable({ data, loading, onEdit, onDelete, onExtracto, onSync, canEdit = false }: MotosTableProps) {
-  const isOnline = useOnlineStatus();
+  const { isOnline } = useOnlineStatus();
   const [syncingId, setSyncingId] = useState<number | null>(null);
 
   const handleSync = async (moto: Moto) => {
