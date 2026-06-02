@@ -186,23 +186,27 @@ export async function createRecaudo(input: RecaudoInput): Promise<{
           const localId = await guardarEnDexieConCola(newRecaudo);
           await recalcularSaldosContrato(input.contrato_id);
           const saved = await db.recaudo.where('_local_id').equals(localId).first();
+          window.dispatchEvent(new Event('recaudo-changed'));
           return { success: true, localSaved: true, recaudo: saved };
         }
 
         await db.recaudo.add({ ...data, _sync_status: 'synced' } as any);
         await recalcularSaldosContrato(input.contrato_id);
         const saved = await db.recaudo.where('id').equals(data.id as number).first();
+        window.dispatchEvent(new Event('recaudo-changed'));
         return { success: true, recaudo: saved };
       } catch {
         const localId = await guardarEnDexieConCola(newRecaudo);
         await recalcularSaldosContrato(input.contrato_id);
         const saved = await db.recaudo.where('_local_id').equals(localId).first();
+        window.dispatchEvent(new Event('recaudo-changed'));
         return { success: true, localSaved: true, recaudo: saved };
       }
     } else {
       const localId = await guardarEnDexieConCola(newRecaudo);
       await recalcularSaldosContrato(input.contrato_id);
       const saved = await db.recaudo.where('_local_id').equals(localId).first();
+      window.dispatchEvent(new Event('recaudo-changed'));
       return { success: true, localSaved: true, recaudo: saved };
     }
   } finally {
@@ -280,6 +284,7 @@ export async function updateRecaudo(id: number, updates: Partial<RecaudoInput>):
 
   await recalcularSaldosContrato(recaudoExistente.contrato_id);
 
+  window.dispatchEvent(new Event('recaudo-changed'));
   return recaudoActualizado;
 }
 
@@ -320,6 +325,7 @@ export async function editarMontoRecaudo(id: number, nuevoMonto: number): Promis
 
   await recalcularSaldosContrato(recaudo.contrato_id);
 
+  window.dispatchEvent(new Event('recaudo-changed'));
   return updated;
 }
 
@@ -337,4 +343,6 @@ export async function deleteRecaudo(id: number): Promise<void> {
   });
 
   await recalcularSaldosContrato(recaudo.contrato_id);
+
+  window.dispatchEvent(new Event('recaudo-changed'));
 }

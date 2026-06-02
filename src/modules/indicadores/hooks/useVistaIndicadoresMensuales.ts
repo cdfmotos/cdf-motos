@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../../../lib/supabase';
 import type { Database } from '../../../types/database.types';
 
@@ -9,29 +9,38 @@ export function useVistaIndicadoresMensuales() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-        const { data: rows, error: err } = await supabase
-          .from('view_indicadores_mensuales')
-          .select('*')
-          .order('fecha', { ascending: false });
+      const { data: rows, error: err } = await supabase
+        .from('view_indicadores_mensuales')
+        .select('*')
+        .order('fecha', { ascending: false });
 
-        if (err) {
-          setError(err.message);
-        } else {
-          setData(rows || []);
-        }
-      } finally {
-        setLoading(false);
+      if (err) {
+        setError(err.message);
+      } else {
+        setData(rows || []);
       }
-    };
-
-    fetchData();
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  return { data, loading, error };
+  useEffect(() => {
+    fetchData();
+
+    const handleRecaudoChanged = () => {
+      fetchData();
+    };
+
+    window.addEventListener('recaudo-changed', handleRecaudoChanged);
+    return () => {
+      window.removeEventListener('recaudo-changed', handleRecaudoChanged);
+    };
+  }, [fetchData]);
+
+  return { data, loading, error, refetch: fetchData };
 }

@@ -209,6 +209,10 @@ class SyncEngine {
       const pk = item.tabla === 'estado_sistema' ? pkStr : Number(item.pk_value);
       await tabla.update(pk as any, { _sync_status: 'synced' });
     }
+
+    if (item.tabla === 'recaudo') {
+      window.dispatchEvent(new Event('recaudo-changed'));
+    }
   }
 
   async sincronizarItem(tabla: string, pkValue: string | number): Promise<boolean> {
