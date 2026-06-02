@@ -62,6 +62,29 @@ export async function getContratoById(contratoId: number, isOnline: boolean): Pr
 }
 
 export async function getSaldoPendiente(contratoId: number, isOnline: boolean): Promise<{ saldo: number | null; sinDatosRecientes: boolean }> {
+  // 1. Intentar obtener el saldo desde el último recaudo local en Dexie
+  const recaudosLocales = await db.recaudo
+    .where('contrato_id')
+    .equals(contratoId)
+    .and(r => !!r.fecha_recaudo && r.nuevo_saldo != null)
+    .toArray();
+
+  if (recaudosLocales.length > 0) {
+    // Ordenar cronológicamente por fecha_recaudo y timestamp de creación (created_at)
+    recaudosLocales.sort((a, b) => {
+      if (a.fecha_recaudo !== b.fecha_recaudo) {
+        return a.fecha_recaudo.localeCompare(b.fecha_recaudo);
+      }
+      const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return timeA - timeB;
+    });
+
+    const ultimo = recaudosLocales[recaudosLocales.length - 1];
+    return { saldo: ultimo.nuevo_saldo ?? null, sinDatosRecientes: false };
+  }
+
+  // 2. Si no hay recaudos locales y estamos online, consultar Supabase
   if (isOnline) {
     try {
       const { data, error } = await supabase
@@ -75,17 +98,6 @@ export async function getSaldoPendiente(contratoId: number, isOnline: boolean): 
     } catch {
       return { saldo: null, sinDatosRecientes: true };
     }
-  }
-
-  const ultimoRecaudo = await db.recaudo
-    .where('contrato_id')
-    .equals(contratoId)
-    .and(r => !!r.fecha_recaudo && r.nuevo_saldo != null)
-    .sortBy('fecha_recaudo');
-
-  if (ultimoRecaudo.length > 0) {
-    const ultimo = ultimoRecaudo[ultimoRecaudo.length - 1];
-    return { saldo: ultimo.nuevo_saldo ?? null, sinDatosRecientes: false };
   }
 
   return { saldo: null, sinDatosRecientes: true };
@@ -207,11 +219,21 @@ export async function recalcularSaldosContrato(contratoId: number): Promise<void
   const recaudos = await db.recaudo
     .where('contrato_id')
     .equals(contratoId)
-    .sortBy('fecha_recaudo');
+    .toArray();
+
+  // Ordenar cronológicamente por fecha_recaudo y timestamp de creación (created_at)
+  recaudos.sort((a, b) => {
+    if (a.fecha_recaudo !== b.fecha_recaudo) {
+      return a.fecha_recaudo.localeCompare(b.fecha_recaudo);
+    }
+    const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+    return timeA - timeB;
+  });
 
   let saldoAcumulado = 0;
 
-  const updates = await Promise.all(recaudos.map(async (r) => {
+  for (const r of recaudos) {
     const monto = r.monto_recaudado;
     const cuota = r.cuota_diaria_pactada;
 
@@ -222,18 +244,19 @@ export async function recalcularSaldosContrato(contratoId: number): Promise<void
 
     saldoAcumulado += monto;
 
-    return {
-      key: r.id,
-      changes: {
-        saldo_pendiente: saldoPendiente,
-        nuevo_saldo: nuevoSaldo,
-        dias_pagados: diasPagados,
-        abono: abono,
-      },
+    const changes = {
+      saldo_pendiente: saldoPendiente,
+      nuevo_saldo: nuevoSaldo,
+      dias_pagados: diasPagados,
+      abono: abono,
     };
-  }));
 
-  await Promise.all(updates.map(u => db.recaudo.update(u.key, u.changes)));
+    if (r.id) {
+      await db.recaudo.update(r.id, changes);
+    } else if (r._local_id) {
+      await db.recaudo.where('_local_id').equals(r._local_id).modify(changes);
+    }
+  }
 }
 
 export async function updateRecaudo(id: number, updates: Partial<RecaudoInput>): Promise<RecaudoUpdate> {
