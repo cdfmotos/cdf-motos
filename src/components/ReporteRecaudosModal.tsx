@@ -61,6 +61,7 @@ export function ReporteRecaudosModal({ open, onClose }: ReporteRecaudosModalProp
     { key: 'valor_contrato', label: 'Valor Contrato' },
     { key: 'saldo_pendiente', label: 'Saldo Pendiente' },
     { key: 'tipo_contrato', label: 'Tipo Contrato' },
+    { key: 'fecha_último_recaudo', label: 'Último Recaudo' },
   ];
 
   const formatValue = (key: string, value: any) => {

@@ -13,6 +13,7 @@ export const exportarReporteRecaudosExcel = (data: VistaReportePendientes[]) => 
     'Valor Contrato': r.valor_contrato,
     'Saldo Pendiente': r.saldo_pendiente,
     'Tipo Contrato': r.tipo_contrato || '',
+    'Último Recaudo': r.fecha_último_recaudo || 'N/A',
   }));
 
   const worksheet = XLSX.utils.json_to_sheet(datosExportar);
