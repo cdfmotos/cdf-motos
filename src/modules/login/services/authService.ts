@@ -132,7 +132,12 @@ export async function recuperarContrasena(
           'No es posible recuperar la contraseña para este usuario.',
       };
     }
+    console.log('BASE URL:', import.meta.env.VITE_BASE_URL);
 
+    console.log(
+      'REDIRECT:',
+      `${import.meta.env.VITE_BASE_URL}/reset-password`
+    );
     // Enviar correo de recuperación
     const { error: resetError } =
       await supabase.auth.resetPasswordForEmail(cleanEmail, {
