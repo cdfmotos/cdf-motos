@@ -351,6 +351,57 @@ export type Database = {
         }
         Relationships: []
       }
+      password_reset_requests: {
+        Row: {
+          fecha_creacion: string
+          fecha_expiracion: string
+          fecha_uso: string | null
+          id: number
+          ip_solicitud: string | null
+          token: string
+          uid: string
+          usado: boolean
+          user_agent: string | null
+        }
+        Insert: {
+          fecha_creacion?: string
+          fecha_expiracion?: string
+          fecha_uso?: string | null
+          id?: number
+          ip_solicitud?: string | null
+          token?: string
+          uid: string
+          usado?: boolean
+          user_agent?: string | null
+        }
+        Update: {
+          fecha_creacion?: string
+          fecha_expiracion?: string
+          fecha_uso?: string | null
+          id?: number
+          ip_solicitud?: string | null
+          token?: string
+          uid?: string
+          usado?: boolean
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "password_reset_requests_uid_fkey"
+            columns: ["uid"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "password_reset_requests_uid_fkey"
+            columns: ["uid"]
+            isOneToOne: false
+            referencedRelation: "vista_mis_recaudos"
+            referencedColumns: ["usuario_id"]
+          },
+        ]
+      }
       recaudo: {
         Row: {
           abono: number | null

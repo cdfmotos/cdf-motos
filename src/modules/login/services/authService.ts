@@ -94,7 +94,7 @@ export async function loginUser(credentials: LoginCredentials): Promise<AuthResp
   }
 }
 
-export async function recuperarContrasena(email: string): Promise<{ success: boolean; message: string }> {
+export async function recuperarContrasena(email: string): Promise<{ success: boolean; message: string; uid?: string }> {
   try {
     const cleanEmail = sanitizeEmail(email);
 
@@ -104,7 +104,7 @@ export async function recuperarContrasena(email: string): Promise<{ success: boo
 
     const { data: existingUser, error: fetchError } = await supabase
       .from('users')
-      .select('estado, email')
+      .select('id, estado, email')
       .eq('email', cleanEmail)
       .single();
 
@@ -122,7 +122,7 @@ export async function recuperarContrasena(email: string): Promise<{ success: boo
     }
 
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: `${import.meta.env.VITE_BASE_URL}/reset-password`,
     });
 
     if (resetError) {
@@ -130,7 +130,11 @@ export async function recuperarContrasena(email: string): Promise<{ success: boo
       return { success: false, message: 'No se pudo enviar el correo de recuperación. Intenta de nuevo.' };
     }
 
-    return { success: true, message: 'Revisa tu correo electrónico para restablecer la contraseña' };
+    return { 
+      success: true, 
+      message: 'Revisa tu correo electrónico para restablecer la contraseña',
+      uid: existingUser.id
+    };
   } catch (error) {
     console.error('Error en recuperarContrasena:', error);
     return { success: false, message: 'Ocurrió un error inesperado. Intenta de nuevo.' };

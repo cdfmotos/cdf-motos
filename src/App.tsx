@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router-dom';
 
 import { Login } from './modules/login/Login';
+import { ResetPassword } from './modules/login/ResetPassword';
 import { Dashboard } from './modules/inicio/Dashboard';
 import { MotosPage } from './modules/maestros/motos/MotosPage';
 import { SoatsPage } from './modules/maestros/soat/SoatsPage';
@@ -107,6 +108,7 @@ function App() {
           {/* RUTAS PÚBLICAS */}
           <Route element={<PublicLayout />}>
             <Route path="/login" element={<Login />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
           </Route>
 
           {/* RUTAS PROTEGIDAS */}
