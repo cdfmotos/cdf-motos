@@ -28,7 +28,7 @@ export type RecaudoLocal = RecaudoRow & {
   _sync_status?: SyncStatus;
   _local_id?: string;
 };
-export type Gasto = Tables['gastos']['Row'] & { _sync_status?: SyncStatus };
+export type Gasto = Tables['gastos']['Row'] & { _sync_status?: SyncStatus; _local_id?: string };
 export type Moto = Tables['motos']['Row'] & { _sync_status?: SyncStatus; _local_id?: string };
 export type GPS = Tables['gps']['Row'] & { _sync_status?: SyncStatus; _local_id?: string };
 export type Soat = Tables['soats']['Row'] & { _sync_status?: SyncStatus; _local_id?: string };
