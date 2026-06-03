@@ -24,26 +24,6 @@ export function RecuperarContrasenaModal({ open, onClose, onOpenRegistro }: Recu
     const result = await recuperarContrasena(email);
 
     if (result.success) {
-      if (result.uid) {
-        const token = window.crypto?.randomUUID?.() || Math.random().toString(36).substring(2) + Date.now().toString(36);
-        const userAgent = window.navigator?.userAgent || null;
-
-        const { error: insertError } = await supabase
-          .from('password_reset_requests')
-          .insert({
-            uid: result.uid,
-            token: token,
-            user_agent: userAgent,
-            fecha_creacion: new Date().toISOString(),
-            fecha_expiracion: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-            usado: false,
-            ip_solicitud: null
-          });
-
-        if (insertError) {
-          console.error('Error al insertar solicitud de recuperacion:', insertError);
-        }
-      }
 
       setStatus('success');
       setMessage(result.message);
