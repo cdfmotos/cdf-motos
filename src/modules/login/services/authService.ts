@@ -96,7 +96,7 @@ export async function loginUser(credentials: LoginCredentials): Promise<AuthResp
 
 export async function recuperarContrasena(
   email: string
-): Promise<{ success: boolean; message: string }> {
+): Promise<{ success: boolean; message: string; uid?: string }> {
   try {
     const cleanEmail = sanitizeEmail(email);
 
@@ -132,6 +132,21 @@ export async function recuperarContrasena(
       };
     }
 
+    // Consultar el uid correspondiente al email
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', cleanEmail)
+      .single();
+
+    if (userError || !user) {
+      console.error('Error obteniendo uid de usuario:', userError);
+      return {
+        success: false,
+        message: 'Error al verificar el usuario. Intenta de nuevo.',
+      };
+    }
+
     // Enviar correo de recuperación
     const { error: resetError } =
       await supabase.auth.resetPasswordForEmail(cleanEmail, {
@@ -155,6 +170,7 @@ export async function recuperarContrasena(
       success: true,
       message:
         'Revisa tu correo electrónico para restablecer la contraseña.',
+      uid: user.id
     };
   } catch (error) {
     console.error('Error en recuperarContrasena:', error);

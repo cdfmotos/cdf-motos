@@ -108,8 +108,10 @@ function App() {
           {/* RUTAS PÚBLICAS */}
           <Route element={<PublicLayout />}>
             <Route path="/login" element={<Login />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
           </Route>
+
+          {/* RUTA DE RESTABLECIMIENTO (SIN REDIRECCIÓN AUTOMÁTICA) */}
+          <Route path="/reset-password" element={<ResetPassword />} />
 
           {/* RUTAS PROTEGIDAS */}
           <Route element={<ProtectedLayout />}>
