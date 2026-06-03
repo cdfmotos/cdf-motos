@@ -107,13 +107,13 @@ export async function recuperarContrasena(
       };
     }
 
-    // Validar existencia y estado mediante RPC
-    const { data: puedeRecuperar, error } = await supabase.rpc(
+    // Validar existencia, estado y obtener el ID del usuario mediante RPC
+    const { data: uid, error } = await supabase.rpc(
       'recuperar_password',
       {
         p_email: cleanEmail,
       }
-    );
+    ) as unknown as { data: string | null; error: any };
 
     if (error) {
       console.error('Error verificando usuario:', error);
@@ -124,26 +124,12 @@ export async function recuperarContrasena(
       };
     }
 
-    if (!puedeRecuperar) {
+    // Si la función retorna NULL, el usuario no existe o está inactivo
+    if (!uid) {
       return {
         success: false,
         message:
           'No es posible recuperar la contraseña para este usuario.',
-      };
-    }
-
-    // Consultar el uid correspondiente al email
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('email', cleanEmail)
-      .single();
-
-    if (userError || !user) {
-      console.error('Error obteniendo uid de usuario:', userError);
-      return {
-        success: false,
-        message: 'Error al verificar el usuario. Intenta de nuevo.',
       };
     }
 
@@ -170,7 +156,7 @@ export async function recuperarContrasena(
       success: true,
       message:
         'Revisa tu correo electrónico para restablecer la contraseña.',
-      uid: user.id
+      uid: uid
     };
   } catch (error) {
     console.error('Error en recuperarContrasena:', error);
