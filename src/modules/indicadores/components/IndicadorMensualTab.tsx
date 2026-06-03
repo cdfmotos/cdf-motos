@@ -27,7 +27,8 @@ export function IndicadorMensualTab() {
       sortable: true,
       cell: (row) => {
         if (!row.fecha) return '-';
-        const d = new Date(row.fecha);
+        const [year, month, day] = row.fecha.split('-');
+        const d = new Date(Number(year), Number(month) - 1, Number(day));
         return d.toLocaleDateString('es-CO');
       },
     },
