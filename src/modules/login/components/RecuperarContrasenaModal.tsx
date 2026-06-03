@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { X, Mail, ArrowRight, UserPlus } from 'lucide-react';
 import { recuperarContrasena } from '../services/authService';
-import { supabase } from '../../../lib/supabase';
 
 interface RecuperarContrasenaModalProps {
   open: boolean;
