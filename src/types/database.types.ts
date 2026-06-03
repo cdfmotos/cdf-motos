@@ -1303,6 +1303,7 @@ export type Database = {
         Args: { p_contrato_id: number }
         Returns: undefined
       }
+      recuperar_password: { Args: { p_email: string }; Returns: boolean }
       upsert_estado_sistema: {
         Args: {
           p_abierto: boolean
