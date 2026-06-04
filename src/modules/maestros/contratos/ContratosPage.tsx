@@ -111,7 +111,7 @@ export function ContratosPage() {
   };
 
   const filteredContratos = useMemo(() => {
-    return contratos.filter(c => {
+    const filtered = contratos.filter(c => {
       const matchBusqueda = filters.busqueda === '' || 
         c.id.toString().includes(filters.busqueda) ||
         (c.placa && c.placa.toLowerCase().includes(filters.busqueda.toLowerCase())) ||
@@ -122,6 +122,8 @@ export function ContratosPage() {
 
       return matchBusqueda && matchEstado && matchTipo;
     });
+
+    return filtered.sort((a, b) => b.id - a.id);
   }, [contratos, filters]);
 
   return (
