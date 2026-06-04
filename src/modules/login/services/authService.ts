@@ -139,7 +139,7 @@ export async function recuperarContrasena(
         redirectTo: new URL(
           '/reset-password',
           window.location.origin
-        ).toString(),
+        ).toString(), 
       });
 
     if (resetError) {

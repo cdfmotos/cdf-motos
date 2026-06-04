@@ -33,7 +33,7 @@ export interface RecaudoInput {
 
 export async function getContratoById(contratoId: number, isOnline: boolean): Promise<ContratoWithCliente | null> {
   const contrato = await db.contratos.get(contratoId);
-  if (!contrato) return null;
+  if (!contrato || contrato.estado !== 'Activo') return null;
 
   let cliente: Cliente | undefined;
   if (contrato.cliente_cedula) {
@@ -150,6 +150,9 @@ export async function createRecaudo(input: RecaudoInput): Promise<{
 
     const contrato = await db.contratos.get(input.contrato_id);
     if (!contrato) return { success: false, error: 'Contrato no encontrado' };
+    if (contrato.estado !== 'Activo') {
+      return { success: false, error: 'Solo se pueden registrar recaudos a contratos activos' };
+    }
 
     const { saldo } = await getSaldoPendiente(input.contrato_id, navigator.onLine);
     const saldoPendiente = saldo ?? contrato.valor_contrato;

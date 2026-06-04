@@ -38,7 +38,9 @@ export function ContratosPage() {
   const [filters, setFilters] = useState({
     busqueda: '',
     estado: '',
-    tipo_contrato: ''
+    tipo_contrato: '',
+    fecha_inicio_desde: '',
+    fecha_inicio_hasta: ''
   });
 
   const [modalStatus, setModalStatus] = useState<{isOpen: boolean; type: 'success'|'error'; title: string; message: string}>({
@@ -120,7 +122,11 @@ export function ContratosPage() {
       const matchEstado = filters.estado === '' || c.estado === filters.estado;
       const matchTipo = filters.tipo_contrato === '' || c.tipo_contrato === filters.tipo_contrato;
 
-      return matchBusqueda && matchEstado && matchTipo;
+      const fechaContrato = c.fecha_inicio ? c.fecha_inicio.slice(0, 10) : '';
+      const matchFechaDesde = filters.fecha_inicio_desde === '' || fechaContrato >= filters.fecha_inicio_desde;
+      const matchFechaHasta = filters.fecha_inicio_hasta === '' || fechaContrato <= filters.fecha_inicio_hasta;
+
+      return matchBusqueda && matchEstado && matchTipo && matchFechaDesde && matchFechaHasta;
     });
 
     return filtered.sort((a, b) => b.id - a.id);
