@@ -138,10 +138,15 @@ class SyncEngine {
           };
           const dexieTabla = tablaMap[item.tabla];
           if (dexieTabla) {
-            await dexieTabla.where('_local_id').equals(pkStr).modify({
-              id: (data as any).id,
-              _sync_status: 'synced',
-            });
+            const record = await dexieTabla.where('_local_id').equals(pkStr).first();
+            if (record) {
+              await dexieTabla.delete(record.id);
+              await dexieTabla.put({
+                ...record,
+                id: (data as any).id,
+                _sync_status: 'synced',
+              });
+            }
           }
         }
 

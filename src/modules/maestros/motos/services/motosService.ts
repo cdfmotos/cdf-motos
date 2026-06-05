@@ -41,7 +41,7 @@ export async function createMoto(
         return { success: true, saved, localSaved: true };
       }
 
-      await db.motos.add({ ...data, _sync_status: 'synced' } as any);
+      await db.motos.put({ ...data, _sync_status: 'synced' } as any);
       const saved = await db.motos.where('id').equals(data.id as number).first();
       return { success: true, saved };
     } catch {

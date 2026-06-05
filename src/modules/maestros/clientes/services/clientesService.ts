@@ -41,7 +41,7 @@ export async function createCliente(
         return { success: true, saved, localSaved: true };
       }
 
-      await db.clientes.add({ ...data, _sync_status: 'synced' } as any);
+      await db.clientes.put({ ...data, _sync_status: 'synced' } as any);
       const saved = await db.clientes.where('id').equals(data.id as string).first();
       return { success: true, saved };
     } catch {

@@ -21,14 +21,14 @@ class GestionDB extends Dexie {
   constructor() {
     super('GestionContratosDB');
 
-    this.version(3).stores({
-      clientes:       'id, cedula',
-      contratos:      'id, cliente_cedula, placa, estado',
-      recaudo:        'id, contrato_id, fecha_recaudo, created_at, _sync_status',
-      gastos:         'id, fecha, _sync_status',
-      motos:          'id, placa',
-      gps:            'id, moto_placa',
-      soats:          'id, moto_placa',
+    this.version(4).stores({
+      clientes:       'id, cedula, _local_id',
+      contratos:      'id, cliente_cedula, placa, estado, _local_id',
+      recaudo:        'id, contrato_id, fecha_recaudo, created_at, _sync_status, _local_id',
+      gastos:         'id, fecha, _sync_status, _local_id',
+      motos:          'id, placa, _local_id',
+      gps:            'id, moto_placa, _local_id',
+      soats:          'id, moto_placa, _local_id',
       estado_sistema: 'fecha',
       notificaciones: 'id, contrato_id',
       usuario_notificaciones: 'id, usuario_id, notificacion_id, estado',

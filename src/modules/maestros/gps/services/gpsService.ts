@@ -41,7 +41,7 @@ export async function createGps(
         return { success: true, saved, localSaved: true };
       }
 
-      await db.gps.add({ ...data, _sync_status: 'synced' } as any);
+      await db.gps.put({ ...data, _sync_status: 'synced' } as any);
       const saved = await db.gps.where('id').equals(data.id as number).first();
       return { success: true, saved };
     } catch {

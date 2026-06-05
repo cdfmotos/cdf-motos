@@ -41,7 +41,7 @@ export async function createSoat(
         return { success: true, saved, localSaved: true };
       }
 
-      await db.soats.add({ ...data, _sync_status: 'synced' } as any);
+      await db.soats.put({ ...data, _sync_status: 'synced' } as any);
       const saved = await db.soats.where('id').equals(data.id as number).first();
       return { success: true, saved };
     } catch {

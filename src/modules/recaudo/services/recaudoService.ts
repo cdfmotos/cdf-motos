@@ -193,7 +193,7 @@ export async function createRecaudo(input: RecaudoInput): Promise<{
           return { success: true, localSaved: true, recaudo: saved };
         }
 
-        await db.recaudo.add({ ...data, _sync_status: 'synced' } as any);
+        await db.recaudo.put({ ...data, _sync_status: 'synced' } as any);
         await recalcularSaldosContrato(input.contrato_id);
         const saved = await db.recaudo.where('id').equals(data.id as number).first();
         window.dispatchEvent(new Event('recaudo-changed'));

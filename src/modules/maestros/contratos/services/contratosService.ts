@@ -42,6 +42,9 @@ export async function createContrato(
 
   const newContrato: Contrato = {
     ...contrato,
+    placa: contrato.tipo_contrato === 'Prestamo'
+      ? null
+      : (contrato.placa && contrato.placa.trim() !== '' ? contrato.placa : null),
     id: contrato.id ?? Date.now(),
     _sync_status: 'pending',
     created_at: new Date().toISOString(),
@@ -61,7 +64,7 @@ export async function createContrato(
         return { success: true, saved, localSaved: true };
       }
 
-      await db.contratos.add({ ...data, _sync_status: 'synced' } as any);
+      await db.contratos.put({ ...data, _sync_status: 'synced' } as any);
       const saved = await db.contratos.where('id').equals(data.id as number).first();
       return { success: true, saved };
     } catch {
@@ -86,6 +89,11 @@ export async function updateContrato(
   const actualizado: Contrato = {
     ...existente,
     ...updates,
+    placa: updates.tipo_contrato === 'Prestamo'
+      ? null
+      : (updates.placa !== undefined
+        ? (updates.placa && updates.placa.trim() !== '' ? updates.placa : null)
+        : (existente.tipo_contrato === 'Prestamo' ? null : existente.placa)),
     id: updates.id !== undefined ? updates.id : id,
     _sync_status: 'pending',
   };

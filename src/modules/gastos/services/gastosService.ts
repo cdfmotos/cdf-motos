@@ -46,7 +46,7 @@ export async function createGasto(
         ...data,
         _sync_status: 'synced',
       };
-      await db.gastos.add(syncedGasto);
+      await db.gastos.put(syncedGasto);
       return syncedGasto;
     } catch (err) {
       console.error('Error inserting gasto online, falling back to local queue:', err);
