@@ -18,33 +18,52 @@ export async function exportarRecaudosExcel(opciones: RecaudoExportOptions): Pro
   }
 
   try {
-    let query = supabase
-      .from('recaudo')
-      .select('id, numero_recaudo, contrato_id, fecha_recaudo, monto_recaudado, abono, saldo_pendiente, nuevo_saldo, dias_pagados, tipo_contrato, created_at');
+    const rows: any[] = [];
+    const PAGE_SIZE = 1000;
+    let desde = 0;
 
-    if (opciones.tipo === 'dia' && opciones.fecha) {
-      query = query.eq('fecha_recaudo', opciones.fecha);
-    } else if (opciones.tipo === 'rango' && opciones.fechaInicio && opciones.fechaFin) {
-      query = query.gte('fecha_recaudo', opciones.fechaInicio).lte('fecha_recaudo', opciones.fechaFin);
-    } else if (opciones.tipo === 'contrato' && opciones.contratoId) {
-      query = query.eq('contrato_id', opciones.contratoId);
-      if (opciones.fechaInicio) {
-        query = query.gte('fecha_recaudo', opciones.fechaInicio);
+    while (true) {
+      let query = supabase
+        .from('recaudo')
+        .select('id, numero_recaudo, contrato_id, fecha_recaudo, monto_recaudado, abono, saldo_pendiente, nuevo_saldo, dias_pagados, tipo_contrato, created_at');
+
+      if (opciones.tipo === 'dia' && opciones.fecha) {
+        query = query.eq('fecha_recaudo', opciones.fecha);
+      } else if (opciones.tipo === 'rango' && opciones.fechaInicio && opciones.fechaFin) {
+        query = query.gte('fecha_recaudo', opciones.fechaInicio).lte('fecha_recaudo', opciones.fechaFin);
+      } else if (opciones.tipo === 'contrato' && opciones.contratoId) {
+        query = query.eq('contrato_id', opciones.contratoId);
+        if (opciones.fechaInicio) {
+          query = query.gte('fecha_recaudo', opciones.fechaInicio);
+        }
+        if (opciones.fechaFin) {
+          query = query.lte('fecha_recaudo', opciones.fechaFin);
+        }
       }
-      if (opciones.fechaFin) {
-        query = query.lte('fecha_recaudo', opciones.fechaFin);
+
+      const { data: pageRows, error } = await query
+        .order('fecha_recaudo', { ascending: false })
+        .order('id', { ascending: false })
+        .range(desde, desde + PAGE_SIZE - 1);
+
+      if (error) {
+        return { success: false, error: error.message };
       }
+
+      if (!pageRows || pageRows.length === 0) {
+        break;
+      }
+
+      rows.push(...pageRows);
+
+      if (pageRows.length < PAGE_SIZE) {
+        break;
+      }
+
+      desde += PAGE_SIZE;
     }
 
-    const { data: rows, error } = await query
-      .order('fecha_recaudo', { ascending: false })
-      .order('id', { ascending: false });
-
-    if (error) {
-      return { success: false, error: error.message };
-    }
-
-    if (!rows || rows.length === 0) {
+    if (rows.length === 0) {
       return { success: false, error: 'No se encontraron recaudos con los filtros seleccionados' };
     }
 
