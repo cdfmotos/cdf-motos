@@ -3,9 +3,10 @@ import { useGastos } from './hooks/useGastos';
 import { GastosFilter } from './components/GastosFilter';
 import { GastosTable } from './components/GastosTable';
 import { GastoForm } from './components/GastoForm';
-import { Plus, RefreshCcw } from 'lucide-react';
+import { Plus, RefreshCcw, FileSpreadsheet } from 'lucide-react';
 import { useToast } from '../../components/ui/Toast';
 import { useBlockedDay } from '../../hooks/useBlockedDay';
+import { GastosExportModal } from './components/GastosExportModal';
 import type { Gasto } from '../../db/schema';
 
 export function GastosPage() {
@@ -16,6 +17,7 @@ export function GastosPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingGasto, setEditingGasto] = useState<Gasto | null>(null);
   const [saving, setSaving] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   const handleOpenNew = () => {
     if (!canWrite()) {
@@ -76,6 +78,14 @@ export function GastosPage() {
         </div>
         <div className="flex gap-2">
           <button 
+            onClick={() => setIsExportModalOpen(true)}
+            className="flex items-center gap-2 px-3 py-2 border border-border text-slate-600 bg-white rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium"
+            title="Exportar a Excel"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-green-600" />
+            <span className="hidden sm:inline">Exportar</span>
+          </button>
+          <button 
             onClick={reload}
             className="flex items-center gap-2 px-3 py-2 border border-border text-slate-600 bg-white rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium"
             title="Recargar datos"
@@ -114,6 +124,14 @@ export function GastosPage() {
           onClose={handleCloseForm}
           onSave={handleSave}
           loading={saving}
+        />
+      )}
+
+      {isExportModalOpen && (
+        <GastosExportModal
+          isOpen={isExportModalOpen}
+          onClose={() => setIsExportModalOpen(false)}
+          gastos={gastos}
         />
       )}
     </div>
