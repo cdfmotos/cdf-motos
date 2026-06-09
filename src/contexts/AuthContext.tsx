@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import type { AuthUser } from '../modules/login/utils/authUtils';
-import { getAuthSession, AUTH_USER_KEY } from '../modules/login/utils/authUtils';
+import { getAuthSession, AUTH_USER_KEY, AUTH_TOKEN_KEY, clearAuthSession } from '../modules/login/utils/authUtils';
+import { supabase } from '../lib/supabase';
 
 export type UserRole = 'Admin' | 'Cajero' | 'Socio';
 
@@ -33,6 +34,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // 1. Escuchar los cambios de estado de autenticación en Supabase
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && !session)) {
+        clearUser();
+        window.dispatchEvent(new CustomEvent('cdf-auth-event', { detail: { action: 'logout' } }));
+      } else if (session?.user) {
+        localStorage.setItem(AUTH_TOKEN_KEY, session.access_token);
+      }
+    });
+
+    // 2. Verificar la sesión actual al cargar
+    const checkSession = async () => {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error || !session) {
+        clearUser();
+        window.dispatchEvent(new CustomEvent('cdf-auth-event', { detail: { action: 'logout' } }));
+      } else {
+        localStorage.setItem(AUTH_TOKEN_KEY, session.access_token);
+      }
+    };
+    checkSession();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
     const handleStorage = (e: StorageEvent) => {
       if (e.key === AUTH_USER_KEY) {
         if (e.newValue) {
@@ -58,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const clearUser = () => {
     setUser(null);
-    localStorage.removeItem(AUTH_USER_KEY);
+    clearAuthSession();
   };
 
   useEffect(() => {
@@ -69,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem(AUTH_USER_KEY, JSON.stringify(customEvent.detail.user));
       } else if (customEvent.detail?.action === 'logout') {
         setUser(null);
-        localStorage.removeItem(AUTH_USER_KEY);
+        clearAuthSession();
       }
     };
 
