@@ -85,11 +85,10 @@ export function MotoForm({ moto, onClose, onSave, loading }: MotoFormProps) {
     }
   };
 
-  const getInputClass = (fieldName: string) => 
-    `w-full px-3 py-2 border rounded-lg outline-none transition-colors ${
-      errors[fieldName] 
-        ? 'border-red-500 focus:ring-1 focus:ring-red-500' 
-        : 'border-border focus:ring-1 focus:ring-primary focus:border-primary'
+  const getInputClass = (fieldName: string) =>
+    `w-full px-3 py-2 border rounded-lg outline-none transition-colors ${errors[fieldName]
+      ? 'border-red-500 focus:ring-1 focus:ring-red-500'
+      : 'border-border focus:ring-1 focus:ring-primary focus:border-primary'
     }`;
 
   return (
@@ -115,122 +114,148 @@ export function MotoForm({ moto, onClose, onSave, loading }: MotoFormProps) {
 
         <div className="p-6 overflow-y-auto flex-1">
           <form id="moto-form" onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
+
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Placa *</label>
-              <input 
-                type="text" 
-                name="placa" 
-                value={formData.placa} 
+              <input
+                type="text"
+                name="placa"
+                value={formData.placa}
                 onChange={handleChange}
                 maxLength={6}
                 placeholder="Ej: ABC123"
-                className={`${getInputClass('placa')} uppercase`} 
+                className={`${getInputClass('placa')} uppercase`}
               />
               {errors.placa && <span className="text-xs text-red-500 mt-1 block">{errors.placa}</span>}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Fecha Compra *</label>
-              <input 
-                type="date" 
-                name="fecha_compra" 
-                value={formData.fecha_compra} 
+              <input
+                type="date"
+                name="fecha_compra"
+                value={formData.fecha_compra}
                 onChange={handleChange}
-                className={getInputClass('fecha_compra')} 
+                className={getInputClass('fecha_compra')}
               />
               {errors.fecha_compra && <span className="text-xs text-red-500 mt-1 block">{errors.fecha_compra}</span>}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Marca *</label>
-              <input 
-                type="text" 
-                name="marca" 
-                value={formData.marca} 
+              <input
+                type="text"
+                name="marca"
+                value={formData.marca}
                 onChange={handleChange}
                 placeholder="Honda"
-                className={getInputClass('marca')} 
+                className={getInputClass('marca')}
               />
               {errors.marca && <span className="text-xs text-red-500 mt-1 block">{errors.marca}</span>}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Modelo *</label>
-              <input 
-                type="text" 
-                name="modelo" 
-                value={formData.modelo} 
+              <input
+                type="text"
+                name="modelo"
+                value={formData.modelo}
                 onChange={handleChange}
                 placeholder="KLS"
-                className={getInputClass('modelo')} 
+                className={getInputClass('modelo')}
               />
               {errors.modelo && <span className="text-xs text-red-500 mt-1 block">{errors.modelo}</span>}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Año *</label>
-              <input 
-                type="number" 
-                name="anio" 
-                value={formData.anio} 
+              <input
+                type="number"
+                name="anio"
+                value={formData.anio}
                 onChange={handleChange}
                 min="1990"
                 max={new Date().getFullYear() + 1}
                 placeholder="2015"
-                className={getInputClass('anio')} 
+                className={getInputClass('anio')}
               />
               {errors.anio && <span className="text-xs text-red-500 mt-1 block">{errors.anio}</span>}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Color *</label>
-              <input 
-                type="text" 
-                name="color" 
-                value={formData.color} 
+              <input
+                type="text"
+                name="color"
+                value={formData.color}
                 onChange={handleChange}
                 placeholder="Blanco"
-                className={getInputClass('color')} 
+                className={getInputClass('color')}
               />
               {errors.color && <span className="text-xs text-red-500 mt-1 block">{errors.color}</span>}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Motor *</label>
-              <input 
-                type="text" 
-                name="motor" 
-                value={formData.motor} 
+              <input
+                type="text"
+                name="motor"
+                value={formData.motor}
                 onChange={handleChange}
                 placeholder="123456"
-                className={getInputClass('motor')} 
+                className={getInputClass('motor')}
               />
               {errors.motor && <span className="text-xs text-red-500 mt-1 block">{errors.motor}</span>}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Chasis / VIN *</label>
-              <input 
-                type="text" 
-                name="chasis_vin" 
-                value={formData.chasis_vin} 
+              <input
+                type="text"
+                name="chasis_vin"
+                value={formData.chasis_vin}
                 onChange={handleChange}
                 placeholder="123456"
-                className={getInputClass('chasis_vin')} 
+                className={getInputClass('chasis_vin')}
               />
               {errors.chasis_vin && <span className="text-xs text-red-500 mt-1 block">{errors.chasis_vin}</span>}
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Factura de Venta</label>
+              <input
+                type="text"
+                name="factura_venta"
+                value={formData.factura_venta}
+                onChange={handleChange}
+                placeholder="Ej: FAC-1234"
+                className={getInputClass('factura_venta')}
+              />
+              {errors.factura_venta && <span className="text-xs text-red-500 mt-1 block">{errors.factura_venta}</span>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Factura Documentos</label>
+              <input
+                type="text"
+                name="factura_documentos"
+                value={formData.factura_documentos}
+                onChange={handleChange}
+                placeholder="Ej: 123456789"
+                className={getInputClass('factura_documentos')}
+              />
+              {errors.factura_documentos && <span className="text-xs text-red-500 mt-1 block">{errors.factura_documentos}</span>}
+            </div>
+
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-slate-700 mb-1">Propietario *</label>
-              <input 
-                type="text" 
-                name="propietario" 
-                value={formData.propietario} 
+              <input
+                type="text"
+                name="propietario"
+                value={formData.propietario}
                 onChange={handleChange}
                 placeholder="CDF Motos"
-                className={getInputClass('propietario')} 
+                className={getInputClass('propietario')}
               />
               {errors.propietario && <span className="text-xs text-red-500 mt-1 block">{errors.propietario}</span>}
             </div>
@@ -239,15 +264,15 @@ export function MotoForm({ moto, onClose, onSave, loading }: MotoFormProps) {
         </div>
 
         <div className="p-6 border-t border-border bg-slate-50 flex justify-end gap-3 rounded-b-xl">
-          <button 
-            type="button" 
+          <button
+            type="button"
             onClick={onClose}
             className="px-4 py-2 border border-border text-slate-700 bg-white rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium"
           >
             Cancelar
           </button>
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             form="moto-form"
             disabled={loading}
             className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium disabled:opacity-70"
