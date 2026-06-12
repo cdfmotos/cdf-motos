@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Wifi, WifiOff } from 'lucide-react';
+import { X, Save, Wifi, WifiOff, Search } from 'lucide-react';
 import type { GPS } from '../../../../db/schema';
 import { useOnlineStatus } from '../../../../hooks/useOnlineStatus';
 import { useToast } from '../../../../components/ui/Toast';
+import { db } from '../../../../db/db';
 
 interface GpsFormProps {
   gps: GPS | null;
@@ -23,6 +24,33 @@ export function GpsForm({ gps, onClose, onSave, loading }: GpsFormProps) {
     simcard: '',
   });
 
+  const [motoSeleccionada, setMotoSeleccionada] = useState<any | null>(null);
+  const [motosLoading, setMotosLoading] = useState(false);
+  const [busquedaError, setBusquedaError] = useState<string | null>(null);
+
+  const buscarMoto = async (placa: string) => {
+    const placaLimpia = placa.trim().toUpperCase();
+    if (!placaLimpia) return;
+
+    setMotosLoading(true);
+    setBusquedaError(null);
+    try {
+      const moto = await db.motos.where('placa').equalsIgnoreCase(placaLimpia).first();
+      if (moto) {
+        setMotoSeleccionada(moto);
+        setFormData(prev => ({ ...prev, moto_placa: moto.placa }));
+      } else {
+        setMotoSeleccionada(null);
+        setBusquedaError('No se encontró ninguna moto con esta placa.');
+      }
+    } catch (err) {
+      console.error('Error al buscar moto:', err);
+      setBusquedaError('Error al buscar la moto.');
+    } finally {
+      setMotosLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (gps) {
       setFormData({
@@ -30,12 +58,17 @@ export function GpsForm({ gps, onClose, onSave, loading }: GpsFormProps) {
         gps_imei: gps.gps_imei || '',
         simcard: gps.simcard || '',
       });
+      if (gps.moto_placa) {
+        buscarMoto(gps.moto_placa);
+      }
     } else {
       setFormData({
         moto_placa: '',
         gps_imei: '',
         simcard: '',
       });
+      setMotoSeleccionada(null);
+      setBusquedaError(null);
     }
   }, [gps]);
 
@@ -46,6 +79,11 @@ export function GpsForm({ gps, onClose, onSave, loading }: GpsFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!motoSeleccionada) {
+      addToast('Debe buscar y verificar una placa de moto existente antes de continuar.', 'error');
+      return;
+    }
 
     const submitData = {
       ...formData,
@@ -89,7 +127,7 @@ export function GpsForm({ gps, onClose, onSave, loading }: GpsFormProps) {
 
             <button
               onClick={onClose}
-              className="p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-full"
+              className="p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-full transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -100,19 +138,49 @@ export function GpsForm({ gps, onClose, onSave, loading }: GpsFormProps) {
         <div className="p-6">
           <form id="gps-form" onSubmit={handleSubmit} className="space-y-4">
 
-            <div>
+            <div className="space-y-2">
               <label className="block text-sm font-medium text-slate-700 mb-1">
                 Placa Moto *
               </label>
-              <input
-                type="text"
-                name="moto_placa"
-                value={formData.moto_placa}
-                onChange={handleChange}
-                required
-                maxLength={6}
-                className="w-full px-3 py-2 border border-border rounded-lg uppercase focus:ring-1 focus:ring-primary outline-none"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  name="moto_placa"
+                  value={formData.moto_placa}
+                  onChange={(e) => {
+                    handleChange(e);
+                    if (motoSeleccionada) setMotoSeleccionada(null);
+                    if (busquedaError) setBusquedaError(null);
+                  }}
+                  required
+                  maxLength={6}
+                  placeholder="Ej. AAA123"
+                  className="flex-1 min-w-0 px-3 py-2 border border-border rounded-lg uppercase focus:ring-1 focus:ring-primary focus:border-primary outline-none text-slate-800"
+                />
+                <button
+                  type="button"
+                  onClick={() => buscarMoto(formData.moto_placa)}
+                  disabled={motosLoading || !formData.moto_placa}
+                  className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50 flex items-center gap-2 text-sm font-medium"
+                >
+                  <Search className="w-4 h-4" />
+                  {motosLoading ? 'Buscando...' : 'Buscar'}
+                </button>
+              </div>
+
+              {motoSeleccionada && (
+                <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-xs text-green-800 space-y-1">
+                  <div className="font-semibold text-green-900">Moto vinculada correctamente:</div>
+                  <div><span className="font-medium">Marca:</span> {motoSeleccionada.marca || 'N/A'} - <span className="font-medium">Modelo:</span> {motoSeleccionada.modelo || 'N/A'}</div>
+                  <div><span className="font-medium">Propietario:</span> {motoSeleccionada.propietario || 'N/A'}</div>
+                </div>
+              )}
+
+              {busquedaError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
+                  ⚠️ {busquedaError}
+                </div>
+              )}
             </div>
 
             <div>
@@ -125,7 +193,7 @@ export function GpsForm({ gps, onClose, onSave, loading }: GpsFormProps) {
                 value={formData.gps_imei}
                 onChange={handleChange}
                 required
-                className="w-full px-3 py-2 border border-border rounded-lg focus:ring-1 focus:ring-primary outline-none"
+                className="w-full px-3 py-2 border border-border rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none"
               />
             </div>
 
@@ -138,7 +206,7 @@ export function GpsForm({ gps, onClose, onSave, loading }: GpsFormProps) {
                 name="simcard"
                 value={formData.simcard}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-border rounded-lg focus:ring-1 focus:ring-primary outline-none"
+                className="w-full px-3 py-2 border border-border rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none"
               />
             </div>
 
@@ -150,7 +218,7 @@ export function GpsForm({ gps, onClose, onSave, loading }: GpsFormProps) {
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 border border-border text-slate-700 bg-white rounded-lg hover:bg-slate-50"
+            className="px-4 py-2 border border-border text-slate-700 bg-white rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium"
           >
             Cancelar
           </button>
@@ -159,7 +227,7 @@ export function GpsForm({ gps, onClose, onSave, loading }: GpsFormProps) {
             type="submit"
             form="gps-form"
             disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-70"
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium disabled:opacity-70"
           >
             <Save className="w-4 h-4" />
             {loading ? 'Guardando...' : 'Guardar GPS'}
