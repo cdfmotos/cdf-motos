@@ -32,6 +32,13 @@ export function RecaudosPage() {
   }, [printQueue]);
 
   const abrirPDFRecibo = async (r: Recaudo) => {
+    console.log('RECIBO A IMPRIMIR', {
+      numero: r.numero_recaudo,
+      monto: r.monto_recaudado,
+      saldoPendiente: r.saldo_pendiente,
+      nuevoSaldo: r.nuevo_saldo,
+      createdAt: r.created_at,
+    });
     try {
       const contrato = await db.contratos.get(r.contrato_id);
       if (!contrato) {

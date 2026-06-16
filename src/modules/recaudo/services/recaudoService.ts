@@ -89,12 +89,12 @@ export async function getSaldoPendiente(contratoId: number, isOnline: boolean): 
     try {
       const { data, error } = await supabase
         .from('vista_contratos')
-        .select('saldo_pendiente')
+        .select('nuevo_saldo, saldo_pendiente')
         .eq('id', contratoId)
         .single();
 
       if (error || !data) return { saldo: null, sinDatosRecientes: true };
-      return { saldo: data.saldo_pendiente ?? null, sinDatosRecientes: false };
+      return { saldo: data.nuevo_saldo ?? data.saldo_pendiente ?? null, sinDatosRecientes: false };
     } catch {
       return { saldo: null, sinDatosRecientes: true };
     }
