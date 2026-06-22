@@ -2,6 +2,7 @@ import { db } from '../../../db/db';
 import { encolar } from '../../../db/sync/syncQueue';
 import { supabase } from '../../../lib/supabase';
 import { limpiarPayload } from '../../../utils/sync';
+import { getNextTempId } from '../../../db/tempId';
 import type { Gasto } from '../../../db/schema';
 
 // Helper para normalizar fecha a "YYYY-MM-DD" siempre
@@ -54,10 +55,11 @@ export async function createGasto(
   }
 
   // Offline or error fallback
-  const localId = `local-${Date.now()}`;
+  const tempId = await getNextTempId('gastos');
+  const localId = `local-${Math.abs(tempId)}`;
   const pendingGasto: Gasto = {
     ...cleanGasto,
-    id: Date.now(), // Dexie primary key is numeric id
+    id: tempId,
     _local_id: localId, // Used by SyncEngine to replace id later
     _sync_status: 'pending',
   };

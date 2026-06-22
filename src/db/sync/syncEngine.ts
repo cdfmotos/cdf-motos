@@ -140,12 +140,20 @@ class SyncEngine {
           if (dexieTabla) {
             const record = await dexieTabla.where('_local_id').equals(pkStr).first();
             if (record) {
-              await dexieTabla.delete(record.id);
+              const oldId = record.id;
+              const newId = (data as any).id;
+
+              await dexieTabla.delete(oldId);
               await dexieTabla.put({
                 ...record,
-                id: (data as any).id,
+                id: newId,
                 _sync_status: 'synced',
               });
+
+              // Cascada: actualizar registros hijos que referencian el ID viejo
+              if (item.tabla === 'contratos' && oldId !== newId) {
+                await this.actualizarReferenciasHijas(oldId, newId);
+              }
             }
           }
         }
@@ -241,6 +249,75 @@ class SyncEngine {
       const mensaje = error instanceof Error ? error.message : 'Error desconocido';
       await marcarError(item.id, mensaje);
       return false;
+    }
+  }
+
+  /**
+   * Cuando un contrato se sincroniza y su ID temporal (negativo) cambia
+   * al ID real de Supabase, actualiza todas las referencias hijas:
+   * - Recaudos en Dexie (contrato_id)
+   * - Notificaciones en Dexie (contrato_id)
+   * - Items pendientes en sync_queue que referencien el contrato_id viejo
+   */
+  private async actualizarReferenciasHijas(oldContratoId: number, newContratoId: number) {
+    console.log(
+      `[SyncEngine] Cascada de IDs: contrato ${oldContratoId} → ${newContratoId}`
+    );
+
+    // 1. Actualizar recaudos en Dexie
+    const recaudosAfectados = await db.recaudo
+      .where('contrato_id')
+      .equals(oldContratoId)
+      .toArray();
+
+    for (const recaudo of recaudosAfectados) {
+      await db.recaudo.update(recaudo.id, { contrato_id: newContratoId });
+    }
+
+    if (recaudosAfectados.length > 0) {
+      console.log(
+        `[SyncEngine] Actualizados ${recaudosAfectados.length} recaudos: contrato_id ${oldContratoId} → ${newContratoId}`
+      );
+    }
+
+    // 2. Actualizar notificaciones en Dexie
+    const notificacionesAfectadas = await db.notificaciones
+      .where('contrato_id')
+      .equals(oldContratoId)
+      .toArray();
+
+    for (const notif of notificacionesAfectadas) {
+      await db.notificaciones.update(notif.id, { contrato_id: newContratoId });
+    }
+
+    if (notificacionesAfectadas.length > 0) {
+      console.log(
+        `[SyncEngine] Actualizadas ${notificacionesAfectadas.length} notificaciones: contrato_id ${oldContratoId} → ${newContratoId}`
+      );
+    }
+
+    // 3. Actualizar payloads en sync_queue pendientes que referencien el contrato_id viejo
+    const itemsCola = await db.sync_queue
+      .where('estado')
+      .anyOf(['pending', 'error'])
+      .toArray();
+
+    for (const queueItem of itemsCola) {
+      const payload = queueItem.payload as Record<string, unknown>;
+      if (payload && payload.contrato_id === oldContratoId) {
+        payload.contrato_id = newContratoId;
+        if (queueItem.id) {
+          await db.sync_queue.update(queueItem.id, { payload });
+        }
+        console.log(
+          `[SyncEngine] Actualizado payload en sync_queue (id: ${queueItem.id}): contrato_id ${oldContratoId} → ${newContratoId}`
+        );
+      }
+    }
+
+    // Notificar cambios de recaudo si hubo actualizaciones
+    if (recaudosAfectados.length > 0) {
+      window.dispatchEvent(new Event('recaudo-changed'));
     }
   }
 }

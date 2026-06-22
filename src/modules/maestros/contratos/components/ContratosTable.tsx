@@ -1,9 +1,10 @@
 import { DataTable } from '../../../../components/ui/DataTable';
 import { Badge } from '../../../../components/ui/Badge';
-import { Edit2, FileText, CloudUpload, Loader2 } from 'lucide-react';
+import { Edit2, FileText, CloudUpload, CloudOff, Loader2 } from 'lucide-react';
 import type { Contrato } from '../../../../db/schema';
 import { formatCurrency } from '../../../../utils/formatters';
 import { useOnlineStatus } from '../../../../hooks/useOnlineStatus';
+import { isTempId } from '../../../../db/tempId';
 import { useState } from 'react';
 
 interface ContratosTableProps {
@@ -40,6 +41,19 @@ export function ContratosTable({ data, loading, onEdit, onExtracto, onSync, canE
     {
       header: 'N° Contrato',
       accessorKey: 'id',
+      cell: (item: Contrato) => (
+        isTempId(item.id) ? (
+          <div className="flex flex-col gap-0.5">
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-medium w-fit">
+              <CloudOff className="w-3 h-3" />
+              Pendiente
+            </span>
+            <span className="text-[11px] text-slate-400 font-mono">{item.id}</span>
+          </div>
+        ) : (
+          <span>{item.id}</span>
+        )
+      ),
     },
     {
       header: 'Tipo',

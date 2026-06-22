@@ -2,6 +2,7 @@
 import { db } from '../db';
 import type { SyncQueueItem } from '../schema';
 import type { RecaudoInsert } from '../schema';
+import { getNextTempId } from '../tempId';
 
 // Agrega una operación a la cola
 export async function encolar(item: Omit<SyncQueueItem, 'id' | 'intentos' | 'estado' | 'timestamp'>) {
@@ -15,9 +16,11 @@ export async function encolar(item: Omit<SyncQueueItem, 'id' | 'intentos' | 'est
 
 // Guarda un recaudo en Dexie y lo encola para sincronización
 export async function guardarEnDexieConCola(data: RecaudoInsert): Promise<string> {
-  const localId = `local-${Date.now()}`;
-  const withSync: RecaudoInsert & { _sync_status: 'pending'; _local_id: string } = {
+  const tempId = await getNextTempId('recaudo');
+  const localId = `local-${Math.abs(tempId)}`;
+  const withSync: RecaudoInsert & { _sync_status: 'pending'; _local_id: string; id: number } = {
     ...data,
+    id: tempId,
     _sync_status: 'pending',
     _local_id: localId,
   };

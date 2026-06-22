@@ -2,6 +2,7 @@ import { db } from '../../../../db/db';
 import { encolar } from '../../../../db/sync/syncQueue';
 import { supabase } from '../../../../lib/supabase';
 import { limpiarPayload } from '../../../../utils/sync';
+import { getNextTempId } from '../../../../db/tempId';
 import type { GPS } from '../../../../db/schema';
 
 export async function getGpsList(): Promise<GPS[]> {
@@ -22,7 +23,7 @@ export async function createGps(
 
   const newGps: GPS = {
     ...gps,
-    id: Date.now(),
+    id: await getNextTempId('gps'),
     _sync_status: 'pending',
     created_at: new Date().toISOString(),
   };

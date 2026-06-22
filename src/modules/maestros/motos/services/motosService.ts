@@ -2,6 +2,7 @@ import { db } from '../../../../db/db';
 import { encolar } from '../../../../db/sync/syncQueue';
 import { supabase } from '../../../../lib/supabase';
 import { limpiarPayload } from '../../../../utils/sync';
+import { getNextTempId } from '../../../../db/tempId';
 import type { Moto } from '../../../../db/schema';
 
 export async function getMotos(): Promise<Moto[]> {
@@ -22,7 +23,7 @@ export async function createMoto(
 
   const newMoto: Moto = {
     ...moto,
-    id: Date.now(),
+    id: await getNextTempId('motos'),
     _sync_status: 'pending',
     created_at: new Date().toISOString(),
   };

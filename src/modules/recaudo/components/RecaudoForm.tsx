@@ -43,7 +43,7 @@ export function RecaudoForm({ onClose, onSubmit, buscarContrato }: RecaudoFormPr
 
   const handleBuscar = async () => {
     const id = parseInt(contratoId);
-    if (isNaN(id) || id <= 0) {
+    if (isNaN(id) || id === 0) {
       setError('Ingrese un número de contrato válido');
       return;
     }
@@ -185,7 +185,7 @@ export function RecaudoForm({ onClose, onSubmit, buscarContrato }: RecaudoFormPr
                 {contrato.sin_datos_recientes ? (
                   <div className="flex items-center gap-2 text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
                     <AlertCircle className="w-4 h-4" />
-                    <span className="text-sm">Sin datos recientes offline. Saldo参考: {nf(contrato.valor_contrato)}</span>
+                    <span className="text-sm">Sin datos recientes offline. Saldo: {nf(contrato.valor_contrato)}</span>
                   </div>
                 ) : (
                   <div className="flex justify-between items-center">

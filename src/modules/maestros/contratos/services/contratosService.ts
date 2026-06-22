@@ -2,6 +2,7 @@ import { db } from '../../../../db/db';
 import { encolar } from '../../../../db/sync/syncQueue';
 import { supabase } from '../../../../lib/supabase';
 import { limpiarPayload } from '../../../../utils/sync';
+import { getNextTempId } from '../../../../db/tempId';
 import type { Contrato } from '../../../../db/schema';
 
 export async function getContratos(): Promise<Contrato[]> {
@@ -40,12 +41,14 @@ export async function createContrato(
     }
   }
 
+  const tempId = contrato.id ?? await getNextTempId('contratos');
+
   const newContrato: Contrato = {
     ...contrato,
     placa: contrato.tipo_contrato === 'Prestamo'
       ? null
       : (contrato.placa && contrato.placa.trim() !== '' ? contrato.placa : null),
-    id: contrato.id ?? Date.now(),
+    id: tempId,
     _sync_status: 'pending',
     created_at: new Date().toISOString(),
   };
