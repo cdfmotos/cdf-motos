@@ -18,8 +18,11 @@ const nf = (v: number | string | null | undefined) =>
 
 const df = (v: Date | string | null | undefined) => {
   if (!v) return '—';
-  const d = v instanceof Date ? v : new Date(v);
-  return d.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  if (v instanceof Date) {
+    return v.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  }
+  const date = v.length === 10 ? new Date(`${v}T00:00:00`) : new Date(v);
+  return date.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
 };
 
 // ── Component ────────────────────────────────────────────────────────────────

@@ -14,8 +14,17 @@ function nf(value: any) {
  */
 function df(value: any) {
   if (!value) return '';
-  const d = value instanceof Date ? value : new Date(value);
-  return d.toLocaleDateString('es-CO', {
+  if (value instanceof Date) {
+    return value.toLocaleDateString('es-CO', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  }
+  const date = typeof value === 'string' && value.length === 10
+    ? new Date(`${value}T00:00:00`)
+    : new Date(value);
+  return date.toLocaleDateString('es-CO', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
