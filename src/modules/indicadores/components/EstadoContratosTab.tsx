@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
-  BarChart,
-  Bar,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -9,7 +9,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { Calendar } from 'lucide-react';
+import { Calendar, History, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { useHistoricoEstadoContratos } from '../hooks/useHistoricoEstadoContratos';
 import { OfflineMessage } from '../components/OnlineGate';
 import { useOnlineStatus } from '../../../hooks/useOnlineStatus';
@@ -40,8 +40,8 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
       <div className="bg-white border border-border rounded-lg shadow-lg p-3 text-sm">
         <p className="font-semibold text-slate-700 mb-1">{label}</p>
         {payload.map((p: any) => (
-          <p key={p.dataKey} style={{ color: p.fill }}>
-            {p.name}: {p.value}
+          <p key={p.dataKey} style={{ color: p.stroke }}>
+            {p.name}: <span className="font-semibold">{p.value}</span>
           </p>
         ))}
       </div>
@@ -50,39 +50,65 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
   return null;
 }
 
+/** Muestra el ícono y color correcto para un delta */
+function DeltaIcon({ delta }: { delta: number }) {
+  if (delta > 0) return <TrendingUp className="w-3 h-3 text-red-500 inline ml-1" />;
+  if (delta < 0) return <TrendingDown className="w-3 h-3 text-green-500 inline ml-1" />;
+  return <Minus className="w-3 h-3 text-slate-400 inline ml-1" />;
+}
+
 export function EstadoContratosTab() {
   const { isOnline } = useOnlineStatus();
-  
+
   const today = toYMD(new Date());
   const quinceDiasAtras = new Date();
   quinceDiasAtras.setDate(quinceDiasAtras.getDate() - 15);
-  
+
+  // Fechas del filtro; vacías = histórico completo
   const [fechaDesde, setFechaDesde] = useState(toYMD(quinceDiasAtras));
   const [fechaHasta, setFechaHasta] = useState(today);
-  
-  const { data, loading, error } = useHistoricoEstadoContratos(fechaDesde, fechaHasta);
+  const [modoHistorico, setModoHistorico] = useState(false);
+
+  const queryDesde = modoHistorico ? '' : fechaDesde;
+  const queryHasta = modoHistorico ? '' : fechaHasta;
+
+  const { data, loading, error } = useHistoricoEstadoContratos(queryDesde, queryHasta);
 
   if (!isOnline) return <OfflineMessage />;
 
-  // Calculamos los KPIs basándonos en la acumulación o el promedio del rango consultado
-  // o según el último día del rango consultado (ya que los contratos son estados diarios).
-  // Si filtramos por un rango, las KPIs mostrarán el estado promedio del rango
-  const calcularPromedio = (key: keyof typeof data[0]) => {
-    if (data.length === 0) return 0;
-    const sum = data.reduce((acc, curr) => acc + (Number(curr[key]) || 0), 0);
-    return Math.round(sum / data.length);
+  const firstRecord = data[0];
+  const lastRecord = data[data.length - 1];
+  const isRange = data.length > 1;
+
+  /**
+   * Modo snapshot: sin filtro activo (histórico completo) o solo 1 registro → muestra el último valor real.
+   * Modo delta: rango con >1 registro → muestra la variación (último - primero).
+   */
+  const modoSnapshot = modoHistorico || !isRange;
+
+  const getSnapshot = (key: keyof typeof data[0]): number => {
+    if (!lastRecord) return 0;
+    return Number(lastRecord[key]) || 0;
   };
 
-  const totalContratos = calcularPromedio('total_contratos');
-  const activo = calcularPromedio('activo');
-  const bodega = calcularPromedio('bodega');
-  const fiscalia = calcularPromedio('fiscalia');
-  const liquidado = calcularPromedio('liquidado');
-  const paradenuncio = calcularPromedio('paradenuncio');
-  const robada = calcularPromedio('robada');
-  const termino = calcularPromedio('termino');
+  const getDelta = (key: keyof typeof data[0]): number => {
+    if (!firstRecord || !lastRecord) return 0;
+    return (Number(lastRecord[key]) || 0) - (Number(firstRecord[key]) || 0);
+  };
 
-  const chartDataFiltered = data.map((d) => ({
+  const getValue = (key: keyof typeof data[0]) =>
+    modoSnapshot ? getSnapshot(key) : getDelta(key);
+
+  const totalContratos = getValue('total_contratos');
+  const activo = getValue('activo');
+  const bodega = getValue('bodega');
+  const fiscalia = getValue('fiscalia');
+  const liquidado = getValue('liquidado');
+  const paradenuncio = getValue('paradenuncio');
+  const robada = getValue('robada');
+  const termino = getValue('termino');
+
+  const chartData = data.map((d) => ({
     fecha: d.fecha?.slice(5) || '-',
     'Activo': d.activo ?? 0,
     'Bodega': d.bodega ?? 0,
@@ -104,11 +130,29 @@ export function EstadoContratosTab() {
     { label: 'Término', value: termino, color: COLORS['Término'] },
   ];
 
+  // Etiqueta que explica qué representan los KPIs
+  const kpiSubtitle = modoSnapshot
+    ? lastRecord
+      ? `Estado al ${lastRecord.fecha}`
+      : 'Estado actual'
+    : `Variación del ${firstRecord?.fecha ?? ''} al ${lastRecord?.fecha ?? ''}`;
+
+  const handleToggleHistorico = () => {
+    setModoHistorico((prev) => !prev);
+  };
+
+  const formatDeltaValue = (value: number) => {
+    if (modoSnapshot) return value;
+    return value > 0 ? `+${value}` : `${value}`;
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-        <div className="flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-slate-500" />
+      {/* Barra de controles */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-wrap">
+        {/* Filtros de fecha — deshabilitados en modo histórico */}
+        <div className={`flex items-center gap-2 transition-opacity ${modoHistorico ? 'opacity-40 pointer-events-none select-none' : ''}`}>
+          <Calendar className="w-5 h-5 text-slate-500 shrink-0" />
           <div className="flex items-center gap-2">
             <input
               type="date"
@@ -125,6 +169,19 @@ export function EstadoContratosTab() {
             />
           </div>
         </div>
+
+        {/* Botón histórico completo */}
+        <button
+          onClick={handleToggleHistorico}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+            modoHistorico
+              ? 'bg-primary text-white border-primary'
+              : 'bg-white text-slate-600 border-border hover:bg-slate-50'
+          }`}
+        >
+          <History className="w-4 h-4" />
+          {modoHistorico ? 'Aplicar filtro de fechas' : 'Ver histórico completo'}
+        </button>
       </div>
 
       {error && (
@@ -141,52 +198,89 @@ export function EstadoContratosTab() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {kpis.map((kpi) => (
-              <div
-                key={kpi.label}
-                className={`rounded-xl p-5 shadow-sm ${
-                  kpi.highlight
-                    ? 'bg-white border-2 border-primary'
-                    : 'bg-white border border-border'
-                }`}
-              >
-                <p className="text-sm font-medium text-slate-500">{kpi.label}</p>
-                <p
-                  className={`text-2xl font-bold ${
-                    kpi.highlight ? 'text-primary' : 'text-slate-800'
-                  }`}
-                >
-                  {kpi.value}
-                </p>
-              </div>
-            ))}
+          {/* Subtítulo de KPIs */}
+          <div className="flex items-center gap-2">
+            <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+              {modoSnapshot ? '📸 Snapshot —' : '📊 Variación —'}
+            </p>
+            <p className="text-xs text-slate-500">{kpiSubtitle}</p>
           </div>
 
+          {/* KPI Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {kpis.map((kpi) => {
+              const displayValue = formatDeltaValue(kpi.value);
+              const isDelta = !modoSnapshot && kpi.label !== 'Total Contratos';
+              const deltaPositive = isDelta && kpi.value > 0;
+              const deltaNegative = isDelta && kpi.value < 0;
+
+              return (
+                <div
+                  key={kpi.label}
+                  className={`rounded-xl p-5 shadow-sm ${
+                    kpi.highlight
+                      ? 'bg-white border-2 border-primary'
+                      : 'bg-white border border-border'
+                  }`}
+                >
+                  <p className="text-sm font-medium text-slate-500">{kpi.label}</p>
+                  <p
+                    className={`text-2xl font-bold flex items-center gap-1 ${
+                      kpi.highlight
+                        ? 'text-primary'
+                        : deltaPositive
+                        ? 'text-red-500'
+                        : deltaNegative
+                        ? 'text-green-600'
+                        : 'text-slate-800'
+                    }`}
+                    style={!kpi.highlight && modoSnapshot ? { color: kpi.color } : {}}
+                  >
+                    {displayValue}
+                    {isDelta && <DeltaIcon delta={kpi.value} />}
+                  </p>
+                  {isDelta && (
+                    <p className="text-xs text-slate-400 mt-1">
+                      {kpi.value === 0 ? 'Sin cambio' : kpi.value > 0 ? 'aumentaron' : 'disminuyeron'}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Gráfico de líneas */}
           <div className="bg-white border border-border rounded-xl p-5 shadow-sm">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
-              <h3 className="text-base font-semibold text-slate-700">Histórico de Estados</h3>
+              <div>
+                <h3 className="text-base font-semibold text-slate-700">Evolución de Estados</h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {modoHistorico ? 'Histórico completo' : `${data.length} días en el rango`}
+                </p>
+              </div>
             </div>
-            {loading ? (
-              <div className="flex justify-center py-8 text-slate-500">Cargando gráfico...</div>
-            ) : chartDataFiltered.length === 0 ? (
+            {chartData.length === 0 ? (
               <div className="flex justify-center py-8 text-slate-500">Sin datos históricos</div>
             ) : (
               <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={chartDataFiltered} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="fecha" tick={{ fontSize: 12, fill: '#64748b' }} />
-                  <YAxis tick={{ fontSize: 12, fill: '#64748b' }} />
+                  <XAxis dataKey="fecha" tick={{ fontSize: 11, fill: '#64748b' }} />
+                  <YAxis tick={{ fontSize: 11, fill: '#64748b' }} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Legend wrapperStyle={{ fontSize: 10 }} />
-                  <Bar dataKey="Activo" fill={COLORS['Activo']} stackId="a" />
-                  <Bar dataKey="Bodega" fill={COLORS['Bodega']} stackId="a" />
-                  <Bar dataKey="Fiscalía" fill={COLORS['Fiscalía']} stackId="a" />
-                  <Bar dataKey="Liquidado" fill={COLORS['Liquidado']} stackId="a" />
-                  <Bar dataKey="Para Denuncio" fill={COLORS['Para Denuncio']} stackId="a" />
-                  <Bar dataKey="Robada" fill={COLORS['Robada']} stackId="a" />
-                  <Bar dataKey="Término" fill={COLORS['Término']} stackId="a" />
-                </BarChart>
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  {Object.entries(COLORS).map(([key, color]) => (
+                    <Line
+                      key={key}
+                      type="monotone"
+                      dataKey={key}
+                      stroke={color}
+                      strokeWidth={2}
+                      dot={data.length <= 30}
+                      activeDot={{ r: 5 }}
+                    />
+                  ))}
+                </LineChart>
               </ResponsiveContainer>
             )}
           </div>
