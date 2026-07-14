@@ -10,13 +10,16 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { Calendar, Users, Bike, FileText } from 'lucide-react';
-import { useVistaAsistenciaResumen } from '../hooks/useVistaAsistenciaResumen';
 import { useVistaAsistenciaHistorica } from '../hooks/useVistaAsistenciaHistorica';
 import { OfflineMessage } from '../components/OnlineGate';
 import { useOnlineStatus } from '../../../hooks/useOnlineStatus';
 
 function toYMD(date: Date): string {
-  return date.toISOString().split('T')[0];
+  // Usa la fecha local del sistema para evitar desfases por timezone (ej. UTC-5 Colombia)
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 const MOTOS_ASIST_COLOR = '#22c55e';
@@ -56,19 +59,19 @@ export function AsistenciaTab() {
   const [fechaDesde, setFechaDesde] = useState(toYMD(quinceDiasAtras));
   const [fechaHasta, setFechaHasta] = useState(today);
 
-  const { data, loading, error } = useVistaAsistenciaResumen(fechaDesde, fechaHasta);
-  const { data: historico, loading: loadingHistorico } = useVistaAsistenciaHistorica(fechaDesde, fechaHasta);
+  // Usamos únicamente la vista histórica para AMBOS: KPIs y gráfico.
+  // vista_asistencia_resumen_v2 siempre devuelve solo 1 fila con fecha = HOY
+  // (usa CURRENT_TIMESTAMP hardcodeado), por lo que no sirve para filtros históricos.
+  const { data: historico, loading, error } = useVistaAsistenciaHistorica(fechaDesde, fechaHasta);
 
   if (!isOnline) return <OfflineMessage />;
 
-  type AsistenciaItem = NonNullable<typeof data>[number];
+  type HistoricoItem = typeof historico[number];
 
-  const calcularSuma = (key: keyof AsistenciaItem) => {
-    if (!data || data.length === 0) return 0;
-
-    return data.reduce((acc, curr) => {
+  const calcularSuma = (key: keyof HistoricoItem) => {
+    if (!historico || historico.length === 0) return 0;
+    return historico.reduce((acc, curr) => {
       const value = curr[key];
-
       return acc + (typeof value === 'number' ? value : Number(value) || 0);
     }, 0);
   };
@@ -76,10 +79,11 @@ export function AsistenciaTab() {
   const asistenciaContratos = calcularSuma('asistencia_contratos');
   const asistenciaMotos = calcularSuma('asistencia_motos');
   const asistenciaPrestamos = calcularSuma('asistencia_prestamos');
-  const contratosSinAsistencia = calcularSuma('contratos_sin_asistencia');
   const motosEsperadas = calcularSuma('motos_esperadas');
   const prestamosEsperados = calcularSuma('prestamos_esperados');
   const totalEsperados = calcularSuma('total_esperados');
+  // contratos_sin_asistencia no está en la vista histórica → lo derivamos
+  const contratosSinAsistencia = totalEsperados - asistenciaContratos;
 
   const pctTotal = totalEsperados > 0 ? (asistenciaContratos / totalEsperados) * 100 : 0;
   const pctMotos = motosEsperadas > 0 ? (asistenciaMotos / motosEsperadas) * 100 : 0;
@@ -124,7 +128,7 @@ export function AsistenciaTab() {
 
       {loading ? (
         <div className="flex justify-center py-12 text-slate-500">Cargando...</div>
-      ) : !data || data.length === 0 ? (
+      ) : historico.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-48 text-slate-500">
           Sin datos para el rango seleccionado
         </div>
@@ -187,9 +191,7 @@ export function AsistenciaTab() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
               <h3 className="text-base font-semibold text-slate-700">Histórico de Asistencia</h3>
             </div>
-            {loadingHistorico ? (
-              <div className="flex justify-center py-8 text-slate-500">Cargando gráfico...</div>
-            ) : chartDataFiltered.length === 0 ? (
+            {chartDataFiltered.length === 0 ? (
               <div className="flex justify-center py-8 text-slate-500">Sin datos históricos</div>
             ) : (
               <ResponsiveContainer width="100%" height={350}>

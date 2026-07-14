@@ -15,7 +15,11 @@ import { OfflineMessage } from '../components/OnlineGate';
 import { useOnlineStatus } from '../../../hooks/useOnlineStatus';
 
 function toYMD(date: Date): string {
-  return date.toISOString().split('T')[0];
+  // Usa la fecha local del sistema para evitar desfases por timezone (ej. UTC-5 Colombia)
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 const COLORS: Record<string, string> = {

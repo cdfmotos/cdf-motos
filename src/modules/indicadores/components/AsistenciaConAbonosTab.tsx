@@ -23,7 +23,11 @@ import type { Database } from '../../../types/database.types';
 type Row = Database['public']['Views']['vista_asistencia_historica_v3_detalle']['Row'];
 
 function toYMD(date: Date): string {
-  return date.toISOString().split('T')[0];
+  // Usa la fecha local del sistema para evitar desfases por timezone (ej. UTC-5 Colombia)
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 const MOTOS_ASIST_COLOR = '#22c55e';
