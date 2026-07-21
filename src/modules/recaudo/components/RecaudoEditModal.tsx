@@ -5,6 +5,7 @@ import { useToast } from '../../../components/ui/Toast';
 import { ConfirmarMontoModal } from '../../../components/ConfirmarMontoModal';
 import { editarMontoRecaudo } from '../services/recaudoService';
 import type { Recaudo } from '../../../db/schema';
+import { useAuthContext } from '../../../contexts/AuthContext';
 
 const nf = (v: number | null | undefined) =>
   new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })
@@ -19,6 +20,7 @@ interface RecaudoEditModalProps {
 export function RecaudoEditModal({ recaudo, onClose, onSave }: RecaudoEditModalProps) {
   const { isOnline } = useOnlineStatus();
   const { addToast } = useToast();
+  const { isAdmin } = useAuthContext();
   const [monto, setMonto] = useState(String(recaudo.monto_recaudado));
   const [loading, setLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -47,7 +49,7 @@ export function RecaudoEditModal({ recaudo, onClose, onSave }: RecaudoEditModalP
     setError('');
 
     try {
-      await editarMontoRecaudo(recaudo.id, montoNum);
+      await editarMontoRecaudo(recaudo.id, montoNum, isAdmin);
       addToast('Monto actualizado correctamente', 'success');
       onSave();
       onClose();

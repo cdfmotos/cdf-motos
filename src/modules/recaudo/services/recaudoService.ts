@@ -296,12 +296,56 @@ export async function updateRecaudo(id: number, updates: Partial<RecaudoInput>):
   return recaudoActualizado;
 }
 
-export async function editarMontoRecaudo(id: number, nuevoMonto: number): Promise<RecaudoUpdate> {
+export async function editarMontoRecaudo(id: number, nuevoMonto: number, isAdmin?: boolean): Promise<RecaudoUpdate> {
   const recaudo = await db.recaudo.get(id);
   if (!recaudo) throw new Error('Recaudo no encontrado');
 
-  if (recaudo._sync_status !== 'pending') {
-    throw new Error('Solo se pueden editar recaudos pendientes');
+  const isSynced = recaudo._sync_status === 'synced';
+
+  if (isSynced) {
+    if (!isAdmin) {
+      throw new Error('Solo los administradores pueden editar recaudos ya sincronizados');
+    }
+    if (!navigator.onLine) {
+      throw new Error('Debe estar conectado a internet para editar un recaudo sincronizado');
+    }
+
+    // Actualizar directamente en la base de datos remota (Supabase)
+    const { error: updateError } = await supabase
+      .from('recaudo')
+      .update({ monto_recaudado: nuevoMonto } as any)
+      .eq('id', id);
+
+    if (updateError) {
+      throw new Error(`Error en Supabase: ${updateError.message}`);
+    }
+
+    // El trigger en PostgreSQL (trg_recalcular_saldos_update) recalculó todos los recaudos de este contrato.
+    // Descargamos todos los recaudos actualizados de este contrato_id para actualizar Dexie localmente.
+    const { data: allRecaudos, error: fetchError } = await supabase
+      .from('recaudo')
+      .select('*')
+      .eq('contrato_id', recaudo.contrato_id);
+
+    if (fetchError) {
+      console.error('Error al descargar recaudos actualizados:', fetchError);
+      throw new Error(`Error al recuperar saldos actualizados del servidor: ${fetchError.message}`);
+    }
+
+    if (allRecaudos) {
+      for (const r of allRecaudos) {
+        await db.recaudo.put({
+          ...r,
+          _sync_status: 'synced',
+        } as any);
+      }
+    }
+
+    window.dispatchEvent(new Event('recaudo-changed'));
+
+    const finalRecord = await db.recaudo.get(id);
+    if (!finalRecord) throw new Error('Error al recuperar el registro actualizado localmente');
+    return finalRecord;
   }
 
   const contrato = await db.contratos.get(recaudo.contrato_id);

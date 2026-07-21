@@ -7,6 +7,7 @@ import { useOnlineStatus } from '../../../hooks/useOnlineStatus';
 import { useToast } from '../../../components/ui/Toast';
 import { RefreshCw, Edit2, Printer } from 'lucide-react';
 import { db } from '../../../db/db';
+import { useAuthContext } from '../../../contexts/AuthContext';
 
 const nf = (v: number | null | undefined) =>
   new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })
@@ -29,6 +30,7 @@ interface RecaudosTableProps {
 function RecaudosTableComponent({ recaudo, loading, onSyncSuccess, onEdit, onPrint }: RecaudosTableProps) {
   const { isOnline } = useOnlineStatus();
   const { addToast } = useToast();
+  const { isAdmin } = useAuthContext();
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [contratosMap, setContratosMap] = useState<Record<number, Contrato>>({});
 
@@ -173,7 +175,16 @@ function RecaudosTableComponent({ recaudo, loading, onSyncSuccess, onEdit, onPri
         const pk = row._local_id ?? String(row.id);
         const isPending = row._sync_status !== 'synced';
         const isSyncing = syncingId === pk;
-        const canEdit = row._sync_status === 'pending';
+        const canEdit = row._sync_status === 'pending' || (isAdmin && row._sync_status === 'synced' && isOnline);
+
+        const getEditTitle = () => {
+          if (canEdit) return 'Editar monto';
+          if (row._sync_status === 'synced') {
+            if (!isAdmin) return 'No editable (requiere rol de Administrador)';
+            if (!isOnline) return 'No editable (requiere conexión a internet)';
+          }
+          return 'No editable';
+        };
 
         return (
           <div className="flex items-center gap-1">
@@ -193,7 +204,7 @@ function RecaudosTableComponent({ recaudo, loading, onSyncSuccess, onEdit, onPri
             <button
               onClick={() => handleEdit(row)}
               disabled={!canEdit}
-              title={canEdit ? 'Editar monto' : 'No editable (ya sincronizado)'}
+              title={getEditTitle()}
               className={`p-1.5 rounded transition-colors ${
                 canEdit
                   ? 'text-amber-600 hover:bg-amber-50'
@@ -214,7 +225,7 @@ function RecaudosTableComponent({ recaudo, loading, onSyncSuccess, onEdit, onPri
         );
       },
     },
-  ], [contratosMap, syncingId, isOnline]);
+  ], [contratosMap, syncingId, isOnline, isAdmin]);
 
   return (
     <DataTable
