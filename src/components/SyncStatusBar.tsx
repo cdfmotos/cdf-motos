@@ -1,5 +1,14 @@
 import { useHydrate } from '../context/useHydrate';
 import { syncEngine } from '../db/sync/syncEngine';
+import { reintentarErrores } from '../db/sync/syncQueue';
+
+// Reintenta los items marcados como 'error' (agotaron sus 3 intentos) antes
+// de procesar la cola, para que "Sincronizar ahora" también los recupere
+// en vez de dejarlos atascados indefinidamente.
+async function sincronizarTodo() {
+  await reintentarErrores();
+  await syncEngine.procesarCola();
+}
 
 export function SyncStatusBar() {
   const {
@@ -68,7 +77,7 @@ export function SyncStatusBar() {
         </div>
 
         <button
-          onClick={() => syncEngine.procesarCola()}
+          onClick={sincronizarTodo}
           className="text-xs font-medium underline hover:text-orange-900"
         >
           Sincronizar ahora

@@ -3,6 +3,19 @@ import { db } from '../db';
 import type { SyncQueueItem } from '../schema';
 import type { RecaudoInsert } from '../schema';
 import { getNextTempId } from '../tempId';
+import { setHydrateState } from './hydrateState';
+
+// Recalcula cuántos items siguen sin llegar a Supabase ('pending' + 'error')
+// y lo publica en el estado global de sync, para que la barra de estado
+// reaccione de inmediato en vez de esperar a la próxima hidratación.
+export async function actualizarContadorPendientes() {
+  const pendientes = await db.sync_queue
+    .where('estado')
+    .anyOf(['pending', 'error'])
+    .count();
+
+  setHydrateState({ pendientes });
+}
 
 // Agrega una operación a la cola
 export async function encolar(item: Omit<SyncQueueItem, 'id' | 'intentos' | 'estado' | 'timestamp'>) {
@@ -12,6 +25,8 @@ export async function encolar(item: Omit<SyncQueueItem, 'id' | 'intentos' | 'est
     intentos: 0,
     estado: 'pending',
   });
+
+  await actualizarContadorPendientes();
 }
 
 // Guarda un recaudo en Dexie y lo encola para sincronización
@@ -36,12 +51,13 @@ export async function guardarEnDexieConCola(data: RecaudoInsert): Promise<string
 
 // Cuántos registros están esperando sincronización
 export async function contarPendientes(): Promise<number> {
-  return db.sync_queue.where('estado').equals('pending').count();
+  return db.sync_queue.where('estado').anyOf(['pending', 'error']).count();
 }
 
 // Marcar un item como procesado exitosamente (se elimina)
 export async function marcarExitoso(id: number) {
   await db.sync_queue.delete(id);
+  await actualizarContadorPendientes();
 }
 
 // Marcar un item como fallido, guardar el error y sumar intento
@@ -51,6 +67,7 @@ export async function marcarError(id: number, mensaje: string) {
     error_msg: mensaje,
     intentos: (await db.sync_queue.get(id))?.intentos ?? 0 + 1,
   });
+  await actualizarContadorPendientes();
 }
 
 // Reintentar los que fallaron (los vuelve a 'pending')
@@ -58,6 +75,8 @@ export async function reintentarErrores() {
   await db.sync_queue
     .where('estado').equals('error')
     .modify({ estado: 'pending', error_msg: undefined });
+
+  await actualizarContadorPendientes();
 }
 
 // Para debug: ver toda la cola
