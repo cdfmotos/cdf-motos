@@ -27,7 +27,9 @@ export function ResumenDiarioTab() {
       sortable: true,
       cell: (row) => {
         if (!row.fecha) return '-';
-        const d = new Date(row.fecha);
+        // agregar "T00:00:00" para que la fecha 'YYYY-MM-DD' se parsee en hora local
+        // y no se corra un día al convertir desde UTC (ver RecaudosTable.tsx)
+        const d = row.fecha.length === 10 ? new Date(`${row.fecha}T00:00:00`) : new Date(row.fecha);
         return d.toLocaleDateString('es-CO');
       },
     },

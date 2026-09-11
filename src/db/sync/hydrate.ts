@@ -2,6 +2,7 @@ import type { Table } from 'dexie';
 import { supabase } from '../../lib/supabase';
 import { db } from '../db';
 import { setHydrateState } from './hydrateState';
+import { contarPendientes } from './syncQueue';
 
 type SupabaseRow = Record<string, unknown>;
 
@@ -145,11 +146,9 @@ export async function hidratarDB() {
 
     await hidratarRecaudo();
 
-    // Contar pendientes en la cola
-    const pendientes = await db.sync_queue
-      .where('estado')
-      .equals('pending')
-      .count();
+    // Contar pendientes en la cola (incluye 'error', no solo 'pending':
+    // un item que agotó sus reintentos no debe desaparecer del aviso)
+    const pendientes = await contarPendientes();
 
     setHydrateState({
       status: 'success',
