@@ -1,6 +1,5 @@
-import * as XLSX from 'xlsx';
-import { saveAs } from 'file-saver';
 import type { Cliente } from '../../../../db/schema';
+import { crearHojaEstilizada, descargarExcel } from '../../../../utils/excelExport';
 
 export type ExportOptionType = 'completo' | 'fecha' | 'rango';
 
@@ -42,13 +41,6 @@ export const exportarClientesExcel = (clientes: Cliente[], opciones: ExportOptio
     'Fecha Creación': c.created_at ? getDatePart(c.created_at) : '',
   }));
 
-  const worksheet = XLSX.utils.json_to_sheet(datosExportar);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Clientes');
-
-  const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-  const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8' });
-  
-  const fechaHoy = new Date().toISOString().split('T')[0];
-  saveAs(blob, `Exportacion_Clientes_${fechaHoy}.xlsx`);
+  const worksheet = crearHojaEstilizada(datosExportar);
+  descargarExcel(worksheet, 'Clientes', 'Exportacion_Clientes');
 };
