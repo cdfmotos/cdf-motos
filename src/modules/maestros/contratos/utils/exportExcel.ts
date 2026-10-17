@@ -1,6 +1,5 @@
-import * as XLSX from 'xlsx';
-import { saveAs } from 'file-saver';
 import type { Contrato } from '../../../../db/schema';
+import { COLORES, crearHojaEstilizada, descargarExcel, type ColorCelda } from '../../../../utils/excelExport';
 
 export type ExportOptionType = 'completo' | 'fecha' | 'rango' | 'estado';
 
@@ -14,6 +13,23 @@ export interface ExportOptions {
 
 const getDatePart = (dateString: string) => {
   return dateString.split(' ')[0];
+};
+
+// 🔹 Colores por estado (mismos que los badges de ContratosTable)
+const colorEstadoContrato = (estado: string): ColorCelda | undefined => {
+  switch (estado.toLowerCase()) {
+    case 'activo':
+      return COLORES.verde;
+    case 'bodega':
+    case 'fiscalia':
+    case 'paradenuncio':
+    case 'robada':
+      return COLORES.amarillo;
+    case '':
+      return undefined;
+    default:
+      return COLORES.gris;
+  }
 };
 
 export const exportarContratosExcel = (contratos: Contrato[], opciones: ExportOptions) => {
@@ -47,13 +63,9 @@ export const exportarContratosExcel = (contratos: Contrato[], opciones: ExportOp
     'Fecha Creación': c.created_at ? getDatePart(c.created_at) : '',
   }));
 
-  const worksheet = XLSX.utils.json_to_sheet(datosExportar);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Contratos');
-
-  const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-  const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8' });
-  
-  const fechaHoy = new Date().toISOString().split('T')[0];
-  saveAs(blob, `Exportacion_Contratos_${fechaHoy}.xlsx`);
+  const worksheet = crearHojaEstilizada(datosExportar, {
+    columnasMoneda: ['Valor Contrato', 'Cuota Diaria'],
+    columnasColor: { 'Estado': v => colorEstadoContrato(String(v)) },
+  });
+  descargarExcel(worksheet, 'Contratos', 'Exportacion_Contratos');
 };

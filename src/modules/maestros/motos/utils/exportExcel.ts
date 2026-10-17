@@ -1,6 +1,5 @@
-import * as XLSX from 'xlsx';
-import { saveAs } from 'file-saver';
 import type { Moto } from '../../../../db/schema';
+import { crearHojaEstilizada, descargarExcel } from '../../../../utils/excelExport';
 
 export type ExportOptionType = 'completo' | 'fecha' | 'rango';
 
@@ -60,21 +59,6 @@ export const exportarMotosExcel = (motos: Moto[], opciones: ExportOptions) => {
   }));
 
   // 🔹 Crear Excel
-  const worksheet = XLSX.utils.json_to_sheet(datosExportar);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Motos');
-
-  const excelBuffer = XLSX.write(workbook, {
-    bookType: 'xlsx',
-    type: 'array',
-  });
-
-  const blob = new Blob([excelBuffer], {
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8',
-  });
-
-  // 🔹 Nombre del archivo con fecha actual
-  const fechaHoy = new Date().toISOString().split('T')[0];
-
-  saveAs(blob, `Exportacion_Motos_${fechaHoy}.xlsx`);
+  const worksheet = crearHojaEstilizada(datosExportar);
+  descargarExcel(worksheet, 'Motos', 'Exportacion_Motos');
 };

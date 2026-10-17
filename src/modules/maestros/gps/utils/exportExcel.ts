@@ -1,6 +1,5 @@
-import * as XLSX from 'xlsx';
-import { saveAs } from 'file-saver';
 import type { GPS } from '../../../../db/schema';
+import { crearHojaEstilizada, descargarExcel } from '../../../../utils/excelExport';
 
 export type ExportOptionType = 'completo' | 'fecha' | 'rango';
 
@@ -39,13 +38,6 @@ export const exportarGpsExcel = (gpsList: GPS[], opciones: ExportOptions) => {
     'Fecha Creación': g.created_at ? getDatePart(g.created_at) : '',
   }));
 
-  const worksheet = XLSX.utils.json_to_sheet(datosExportar);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'GPS');
-
-  const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-  const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8' });
-  
-  const fechaHoy = new Date().toISOString().split('T')[0];
-  saveAs(blob, `Exportacion_GPS_${fechaHoy}.xlsx`);
+  const worksheet = crearHojaEstilizada(datosExportar);
+  descargarExcel(worksheet, 'GPS', 'Exportacion_GPS');
 };

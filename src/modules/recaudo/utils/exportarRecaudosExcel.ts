@@ -1,6 +1,5 @@
-import * as XLSX from 'xlsx';
-import { saveAs } from 'file-saver';
 import { supabase } from '../../../lib/supabase';
+import { crearHojaEstilizada, descargarExcel } from '../../../utils/excelExport';
 
 export type RecaudoExportType = 'completo' | 'dia' | 'rango' | 'contrato';
 
@@ -91,15 +90,10 @@ export async function exportarRecaudosExcel(opciones: RecaudoExportOptions): Pro
       'fecha_creacion': formatTime(r.created_at),
     }));
 
-    const worksheet = XLSX.utils.json_to_sheet(datosExportar);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Recaudos');
-
-    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-    const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8' });
-    
-    const fechaHoy = new Date().toISOString().split('T')[0];
-    saveAs(blob, `Exportacion_Recaudos_${fechaHoy}.xlsx`);
+    const worksheet = crearHojaEstilizada(datosExportar, {
+      columnasMoneda: ['Monto recaudado', 'abono', 'saldo_pendiente', 'nuevo_saldo'],
+    });
+    descargarExcel(worksheet, 'Recaudos', 'Exportacion_Recaudos');
 
     return { success: true };
   } catch (err: any) {
